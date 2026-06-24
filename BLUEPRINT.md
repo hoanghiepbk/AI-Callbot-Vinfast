@@ -227,8 +227,13 @@ class TTS(Protocol):
     def synthesize(self, text: str) -> TTSResult: ...
 
 # normalization/base.py
+class NormResult(BaseModel):
+    value: str | None
+    parse_failed: bool
+
 class Normalizer(Protocol):
-    def normalize(self, text: str) -> str: ...   # spoken VN numbers -> digits/plate/VIN
+    # per-field, typed; chạy SAU extraction (D2); parse_failed = trigger garbled #5 (D3)
+    def normalize_field(self, name: str, raw: str) -> NormResult: ...
 ```
 
 > **Vì sao đây là chìa khóa song song:** A code `DialogueEngine` chỉ phụ thuộc `LLM` + `Normalizer` *protocol* — test bằng fake/stub. B code `ASR/TTS/Normalizer` impl thật. Ráp ở `pipeline.py` (Wave 2) là khớp vì cùng interface. Không ai chờ ai.

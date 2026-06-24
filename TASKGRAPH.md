@@ -1,6 +1,6 @@
 # TASK GRAPH: VinFast Callbot
 
-> Cắt [BLUEPRINT.md](BLUEPRINT.md) thành 22 task, dependency-mapped, chia **Track A (Hiệp)** / **Track B (Phương)**.
+> Cắt [BLUEPRINT.md](BLUEPRINT.md) thành 23 task, dependency-mapped, chia **Track A (Hiệp)** / **Track B (Phương)**.
 > Quy ước: `[PAIR]` = hai người cùng làm/merge trước · `[A]` Track A · `[B]` Track B.
 > Luật push code không đụng nhau: [PLAN.md §4.1–4.3](PLAN.md).
 
@@ -20,8 +20,8 @@
   │ TASK-A11 categories+priority  │                      │ TASK-B11 asr wrapper (+file)   │
   │ TASK-A12 nlu (intent+extract) │◄─A10                 │ TASK-B12 mic + VAD             │◄─ chỉ cần 001
   │ TASK-A13 CallState+LangGraph  │◄─A11,A12             │ TASK-B13 conversation corpus   │◄─002 (A duyệt expected)
-  │ TASK-A14 post-call track      │◄─A10                 └──────────────┬───────────────┘
-  └──────────────┬──────────────┘                                     │
+  │ TASK-A14 post-call track      │◄─A10                 │ TASK-B14 wer-audio             │◄─ chỉ cần 001
+  └──────────────┬──────────────┘                      └──────────────┬───────────────┘
                  ▼ WAVE 2                                              ▼ WAVE 2
   ┌─────────────────────────────┐                      ┌──────────────────────────────┐
   │ TASK-A20 8 exception handlers │◄─A13,A12             │ TASK-B20 TTS Piper             │◄─003

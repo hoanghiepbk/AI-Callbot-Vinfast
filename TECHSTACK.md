@@ -42,6 +42,8 @@ Brief chấm trên **4 ô điểm + 1 bonus**:
 LLM **chỉ làm 4 việc**: (1) phân loại intent, (2) trích xuất entity, (3) sinh câu nói, (4) tóm tắt cuối call.
 Toàn bộ logic *hỏi field nào tiếp theo · field nào đã confirm · khi nào escalate* do **FSM xác định** quản.
 
+> **Lưu ý thuật ngữ:** "State machine" ở đây là *nguyên lý* (thick state vs LLM-memory); **nền hiện thực là LangGraph — xem §1.1**; FSM hand-rolled là phương án đã cân nhắc & loại.
+
 **`SlotState` theo dõi mỗi field 4 thuộc tính:** `value`, `status` (`empty`/`pending`/`confirmed`/`corrected`), `raw_utterance`, `confirmed_at`.
 - FSM (không phải LLM) quyết định **hỏi gì tiếp** → deterministic.
 - LLM chỉ quyết định **phrasing** câu hỏi và **hiểu** input.
@@ -69,7 +71,7 @@ Toàn bộ logic *hỏi field nào tiếp theo · field nào đã confirm · khi
 ```
         ┌──────────────── CONVERSATION TRACK (realtime, mỗi lượt) ────────────────┐
         │                                                                          │
-🎤 Mic ─►[VAD: silero-vad]─►[ASR: faster-whisper]─► transcript                      │
+🎤 Mic ─►[VAD: silero-vad]─►[ASR: PhoWhisper-CT2]─► transcript                      │
         │                            │                                             │
         │                            ▼                                             │
         │   ┌──────────── DialogueEngine (LangGraph StateGraph) ───────────┐       │

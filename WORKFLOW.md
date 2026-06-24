@@ -22,8 +22,8 @@
 
 | Vùng | Chủ | Nội dung |
 |---|---|---|
-| **Track A — Hiệp ("Bộ não")** | A | `dialogue/` · `llm/` · `eval/` · `tests/` (dialogue: state/extraction/exception/final_output) · `docs/EVALUATION_REPORT.md` |
-| **Track B — Phương ("Giác quan & Giọng")** | B | `audio/` · `asr/` · `tts/` · `normalization/` · `main.py` + Gradio · `tests/test_normalization.py` |
+| **Track A — Hiệp** | A | `dialogue/` · `llm/` · `eval/` · `tests/` (dialogue: state/extraction/exception/final_output) · `docs/EVALUATION_REPORT.md` |
+| **Track B — Phương ** | B | `audio/` · `asr/` · `tts/` · `normalization/` · `main.py` + Gradio · `tests/test_normalization.py` |
 
 **File dùng chung (có chủ rõ — xem §5 cho luật):**
 
