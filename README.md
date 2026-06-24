@@ -1,57 +1,62 @@
-# Task 3 — Vietnamese Customer Service Callbot
+# VinFast Vietnamese Customer Service Callbot — Task 3
 
 **VinSmart Future — AI Internship Program**
-Issued: June 17, 2026 · Duration: 1 week
 
-> **What we're looking for:** We do **not** expect a production-ready callbot. We expect **clear design thinking**, **smooth conversation logic across all 5 categories**, and **honest handling of edge cases and failures**. A bot that gracefully recovers from errors and escalates correctly is better than one that only works on the happy path.
+A Vietnamese-language customer-service voice callbot for the VinFast domain.
+Pipeline: **Mic → ASR → LLM dialogue → structured JSON (+ optional TTS)**,
+covering 5 inbound call categories with robust exception handling and a
+rigorous, honest evaluation framework.
+
+> What this is graded on (per brief): *clear design thinking, smooth conversation
+> logic across all 5 categories, honest handling of edge cases and failures.*
+> A bot that gracefully recovers and escalates correctly beats one that only
+> works on the happy path.
 
 ---
 
-## 1. Pipeline
+## Approach (in one minute)
+
+- **"Thin LLM, Thick State Machine".** The LLM only does NLU (intent + entity
+  extraction), response phrasing, and post-call summarisation. A **deterministic
+  state machine** owns all dialogue control — which field to ask next, what is
+  already confirmed, when to escalate. This is what makes the bot reliable and
+  testable, and is the key to passing the hardest exceptions (no re-ask, update
+  on correction, partial JSON on hang-up).
+- **Fully local & reproducible.** Local ASR (faster-whisper), local LLM (Ollama),
+  local TTS (Piper). No cloud dependency → runs on a clean machine, offline.
+- **Spoken-Vietnamese entity normalization.** A dedicated layer converts
+  spoken numbers / phone / license plate / VIN into structured values — so the
+  bot survives how Vietnamese callers actually speak.
+- **Evaluation as a first-class deliverable.** Routing confusion matrix, slot F1,
+  emergency recall on adversarial cases, WER, latency p50/p95, and honest failure
+  analysis.
+
+---
+
+## Pipeline
 
 | Phase | Status | Description |
 |---|---|---|
-| **Phase 1 — ASR** | Mandatory | Capture live microphone input → Vietnamese transcript. Any ASR model (PhoWhisper, wav2vec2-vi, Whisper, etc.) |
-| **Phase 2 — LLM** | Mandatory | Process transcript, manage dialogue, generate response. Any local LLM backend (llama.cpp, Ollama, vLLM, HuggingFace, etc.) |
-| **Phase 3 — TTS** | Optional (+5 pts) | Convert text response → speech. If not implemented, the bot responds in **text only** — the pipeline is still considered complete. |
+| **Phase 1 — ASR** | Mandatory | Live microphone input → Vietnamese transcript |
+| **Phase 2 — LLM** | Mandatory | Process transcript, manage dialogue, generate response (local LLM) |
+| **Phase 3 — TTS** | Optional (+5 pts) | Text response → spoken Vietnamese. If absent, the bot responds in text only |
 
 ---
 
-## 2. Domain & Categories
+## Domain & Categories
 
-The bot operates in the **VinFast customer service** domain, handling 5 categories of inbound calls. The bot must identify the correct category and collect all required fields through natural conversation.
+The bot identifies the correct category and collects all required fields through
+natural conversation.
 
-### G_1 — Cứu hộ (Roadside Rescue)
-- **Goal:** Receive a breakdown report and arrange support (service center dispatch or towing)
-- **Fields:** `full_name`, `phone`, `vehicle_model`, `license_plate_vin`, `vehicle_type`, `current_odo`, `current_location`, `city_name`, `vehicle_condition`
-
-### G_2 — Bảo hành & Sửa chữa (Warranty & Repair)
-- **Goal:** Advise on warranty / repair policy and provide service center information for an appointment
-- **Fields:** `full_name`, `owner_phone`, `vehicle_model`, `vehicle_usage_type`, `license_plate_vin`, `service_center`, `vehicle_condition`
-
-### G_3 — Đơn hàng (Order Status & Management)
-- **Goal:** Advise on order status and delivery process; handle deposit transfer or order info update
-- **Fields:** `full_name`, `order_phone`, `order_code_dealer`, `customer_type`
-
-### G_4 — Xe máy – Bảo hành (Motorbike Warranty)
-- **Goal:** Advise on motorbike warranty / repair policy and direct to the nearest service center
-- **Fields:** `full_name`, `phone`, `vehicle_line`, `license_plate_vin`, `current_location`, `vehicle_condition`
-
-### G_5 — Hỗ trợ kỹ thuật từ xa (Remote Tech Support)
-- **Goal:** Guide the customer through a remote fix; book a service center visit if unresolvable
-- **Fields:** `full_name`, `phone`, `license_plate_vin`, `vehicle_line`, `current_odo` (optional), `vehicle_condition_details` (incl. software version)
-
-### Post-call output
-
-Generated from the full conversation transcript at the **end of every call** (not collected during dialogue):
-
-| Field | Type | Description |
+| Cat | Name | Required fields |
 |---|---|---|
-| `short_summary` | string | 1–2 sentence recap of the call and action taken |
-| `sentimental_analysis` | string | Customer tone throughout the call (e.g. calm / frustrated / urgent) |
-| `emergency` | yes / no | Was there a life-safety or urgent rescue situation? |
+| **G_1** | Cứu hộ (Roadside Rescue) | `full_name`, `phone`, `vehicle_model`, `license_plate_vin`, `vehicle_type`, `current_odo`, `current_location`, `city_name`, `vehicle_condition` |
+| **G_2** | Bảo hành & Sửa chữa (Warranty & Repair) | `full_name`, `owner_phone`, `vehicle_model`, `vehicle_usage_type`, `license_plate_vin`, `service_center`, `vehicle_condition` |
+| **G_3** | Đơn hàng (Order Status & Management) | `full_name`, `order_phone`, `order_code_dealer`, `customer_type` |
+| **G_4** | Xe máy – Bảo hành (Motorbike Warranty) | `full_name`, `phone`, `vehicle_line`, `license_plate_vin`, `current_location`, `vehicle_condition` |
+| **G_5** | Hỗ trợ kỹ thuật từ xa (Remote Tech Support) | `full_name`, `phone`, `license_plate_vin`, `vehicle_line`, `current_odo` (optional), `vehicle_condition_details` (incl. software version) |
 
-**Final output per call:**
+**Post-call output** (generated from the full transcript at the end of every call):
 
 ```json
 {
@@ -67,71 +72,103 @@ Generated from the full conversation transcript at the **end of every call** (no
 
 ---
 
-## 3. Exception Handling
+## Exception Handling
 
-The bot must handle all of the following situations. Document your handling strategy for each in the architecture document and demonstrate them in your test scenarios.
+All 8 situations are handled deterministically in the state machine, driven by
+flags the LLM extracts:
 
-| Situation | Expected Behaviour |
+| Situation | Behaviour |
 |---|---|
-| Missing field | Ask only for the missing field — do not re-ask already confirmed information |
-| Customer corrects info | Acknowledge the correction, update the value, continue without repeating confirmed fields |
-| Ambiguous intent | Ask one clarifying question before routing — do not assume a category |
-| Out-of-scope query | Acknowledge scope politely and redirect, or offer to transfer to a human agent |
-| Unclear / garbled input | Ask the customer to confirm unclear values (phone, plate number, etc.) before recording |
-| Emergency detected | Prioritise immediately — provide rescue hotline, skip lower-priority field collection |
+| Missing field | Ask only for the missing field — never re-ask confirmed info |
+| Customer corrects info | Acknowledge, update the value, continue without repeating |
+| Ambiguous intent | Ask one clarifying question before routing |
+| Out-of-scope query | Acknowledge politely, redirect or offer human transfer |
+| Unclear / garbled input | Read back and confirm before recording |
+| Emergency detected | Prioritise immediately — provide rescue hotline, skip low-priority fields |
 | Stuck after 2+ failed turns | Offer to transfer to a human agent |
-| Customer hangs up mid-call | Output partial JSON with fields collected so far; mark missing fields as `null` |
+| Customer hangs up mid-call | Output partial JSON; unfilled fields = `null` |
 
 ---
 
-## 4. Evaluation Framework
+## Evaluation (minimum coverage, exceeded)
 
-**Open-ended:** You design your own test scenarios, metrics, and evaluation strategy. There is no fixed benchmark. You will be graded on the **quality and rigour of your evaluation design**, not on hitting a specific score.
-
-**Minimum requirements:**
-- Covers all 5 categories — at least 2 test scenarios per category (10 minimum)
-- Includes at least 3 exception handling scenarios from Section 3
-- Includes at least one **automated** metric
-- Reports failure cases honestly — what the bot got wrong and why
-- Measures and reports end-to-end latency per turn
+- All 5 categories — ≥ 2 scenarios each (≥ 10 total)
+- ≥ 3 exception-handling scenarios
+- ≥ 1 automated metric (slot-extraction F1, WER)
+- Honest failure analysis — what the bot got wrong and why
+- End-to-end latency per turn (p50 / p95, broken down by ASR / LLM / TTS)
 
 ---
 
-## 5. Deliverables
+## Planning & Design Documents
 
-| # | Deliverable | Description |
-|---|---|---|
-| 1 | Architecture document | Pipeline design, model choices, conversation flow, design decisions and trade-offs |
-| 2 | Working bot | End-to-end runnable pipeline: microphone input → ASR → LLM → text response + extracted fields JSON. TTS voice response if implemented. |
-| 3 | Evaluation framework + test scenarios | Intern-designed test cases, metrics, and evaluation scripts or rubrics. Must include exception handling scenarios. |
-| 4 | Evaluation report | Results across all metrics, failure analysis, latency breakdown, honest assessment of limitations |
-| 5 | `requirements.txt` | Pinned dependencies. No credentials in code — API keys / tokens via `.env` only. |
-
----
-
-## 6. Scoring Rubric
-
-| Points | Category | Criteria |
-|---|---|---|
-| 30 | Pipeline Functionality | All 5 categories implemented |
-| 25 | Dialogue Design & Exception Handling | Conversation quality; Section 3 handling |
-| 25 | Evaluation Framework | Covers all 5 categories; rigour and design quality |
-| 20 | Code Quality & Reproducibility | Clean, readable code; clear setup |
-| +5 | TTS Bonus | Working speech output. Bot responds in spoken Vietnamese. |
-
----
-
-## 7. Suggested Timeline
-
-| Days | Milestone |
+| Doc | Purpose |
 |---|---|
-| 1 – 3 | Architecture design · ASR integration and testing |
-| 4 – 7 | LLM dialogue covering all 5 categories · Output JSON structure |
-| 8 – 10 | Exception handling · Edge case testing · TTS (optional) |
-| 11 – 14 | Evaluation framework · Run tests · Evaluation report · Reproducibility check |
-
-> Timeline is a suggestion — adjust pacing as needed, as long as all deliverables are submitted by the deadline.
+| [TECHSTACK.md](TECHSTACK.md) | Tech-stack choices and the rationale behind each |
+| [PLAN.md](PLAN.md) | Execution plan, 2-person split, git/code-push strategy |
+| [BLUEPRINT.md](BLUEPRINT.md) | Detailed design: turn loop, data contract, interfaces |
+| [TASKGRAPH.md](TASKGRAPH.md) | Dependency-mapped task breakdown by track |
 
 ---
 
-*VinSmart Future — AI Internship Program · Task 3 Brief · Generated June 17, 2026*
+## Planned Project Structure
+
+```
+src/callbot/
+  main.py            # CLI entry (voice + text mode)
+  pipeline.py        # one turn: audio → ASR → engine → TTS, with latency timers
+  config.py          # .env loading
+  audio/             # mic capture, VAD, playback
+  asr/               # faster-whisper wrapper (interface + impl)
+  llm/               # Ollama client, versioned prompts
+  dialogue/          # engine (FSM), state, categories, intent, extraction,
+                     # exceptions, response, post_call
+  normalization/     # spoken-Vietnamese number/plate/VIN normalization
+  models/            # Pydantic schemas (data contract)
+  tts/               # Piper (interface + pluggable impls)
+  utils/             # logging, latency
+scenarios/           # evaluation fixtures (turn-by-turn) + audio clips
+tests/               # pytest unit/exception tests
+eval/                # eval runner + metrics + report template
+docs/                # ARCHITECTURE.md, EVALUATION_REPORT.md
+```
+
+---
+
+## Tech Stack (summary)
+
+| Layer | Choice |
+|---|---|
+| Language | Python 3.11 |
+| VAD | silero-vad |
+| ASR | faster-whisper (medium, int8); PhoWhisper as accuracy upgrade |
+| LLM runtime | Ollama |
+| LLM model | Qwen-class 7–8B (+ A/B against a Vietnamese-tuned model) |
+| Structured output | Pydantic v2 + JSON mode |
+| Dialogue | Hand-rolled deterministic state machine |
+| TTS (+5) | Piper (local); pluggable interface |
+| Frontend | CLI (dev/eval) + Gradio (demo) |
+| Eval | pytest + jiwer (WER) + LLM-as-judge |
+
+See [TECHSTACK.md](TECHSTACK.md) for full rationale and trade-offs.
+
+---
+
+## Setup
+
+> Implementation in progress. Setup steps will be finalised with the working bot.
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env          # configure OLLAMA_HOST, model names, etc.
+```
+
+No credentials in code — API keys / tokens via `.env` only.
+
+---
+
+## Status
+
+Planning and design complete (see documents above). Implementation pending.
