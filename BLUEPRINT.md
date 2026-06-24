@@ -35,7 +35,7 @@
 | D11 | Report **latency E2E tổng/lượt** + breakdown | Brief đòi "end-to-end" | Chỉ breakdown thành phần |
 | D12 | **Dùng LangGraph** (StateGraph) | Routing đa-intent + checkpointing + đúng stack VinSmart/XeCare | FSM Python thuần |
 
-> **Bất biến qua mọi quyết định:** **"Thin LLM, Thick State Machine"** + seam `process(text)→(reply, SlotState)`. LangGraph chỉ là *nền orchestration*; logic slot-filling vẫn deterministic trong node Python → **Track B không bị ảnh hưởng.**
+> **Bất biến qua mọi quyết định:** **"Thin LLM, Thick State Machine"** + seam `process(text) → TurnResult(reply, state, done)`. LangGraph chỉ là *nền orchestration*; logic slot-filling vẫn deterministic trong node Python → **Track B không bị ảnh hưởng.**
 
 ---
 
@@ -50,6 +50,7 @@ process(user_text):                          # = một lượt traversal trên L
        emergency → flag + đẩy hotline + hạ ưu tiên field thấp        (#6)
        out_of_scope → redirect / transfer human                      (#4)
        correction → đánh dấu corrected_fields                        (#2)
+       hangup (verbal: "thôi/để sau") → chào lịch sự 1 câu → finalize() partial  (#8 verbal)
   3. if category is None and nlu.category is None:                    (#3)
         → hỏi ĐÚNG 1 câu làm rõ; return
      else: lock category
@@ -66,7 +67,8 @@ process(user_text):                          # = một lượt traversal trên L
   8. reply = response_node(next_field | pending_readback | closing, state)   # LLM: chỉ phrasing
   9. return TurnResult(reply, state, done=state.complete)
 
-# (#8) Hangup: pipeline/IO phát hiện silence-timeout / disconnect / Ctrl-C → engine.finalize() (D4)
+# (#8) Hangup — 2 đường, cùng đổ về finalize(): (verbal) signals.hangup → chào 1 câu → finalize (bước 2);
+#      (I/O) pipeline phát hiện silence-timeout / disconnect / Ctrl-C → engine.finalize() (D4).
 #      LangGraph checkpoint giữ CallState xuyên lượt → interrupt finalize từ checkpoint cuối.
 ```
 
@@ -104,8 +106,7 @@ class IntentSignals(BaseModel):
     emergency: bool = False
     out_of_scope: bool = False
     correction: bool = False
-    hangup: bool = False
-    unclear: bool = False        # caller gave garbled/uncertain value
+    hangup: bool = False         # verbal hangup ("thôi/để sau") → finalize() (#8); I/O hangup handled in pipeline (D4)
 
 Category = Literal["G_1", "G_2", "G_3", "G_4", "G_5"]
 
@@ -144,7 +145,7 @@ class FinalOutput(BaseModel):
 - `READBACK_REQUIRED = {"phone", "owner_phone", "order_phone", "license_plate_vin"}` — luôn đọc lại xác nhận (D10).
 - Validator trả `parse_failed`: phone (10 số), VIN (17 ký tự), plate (regex VN) (D3).
 - `normalization/base.py`: `normalize_field(name, raw) -> NormResult(value: str | None, parse_failed: bool)` — per-field, chạy SAU extraction (D2).
-- `dialogue/values.py` — tập giá trị field phân loại (D9, nền — chỉnh theo chính sách VinFast thật):
+- `dialogue/values.py` — tập giá trị field phân loại (D9). **`# TODO(values): PROVISIONAL — xác nhận theo danh mục case Salesforce/VinFast thật trước khi siết enum`**. Wave 0 **freeze field NAME** vào `schemas.py`; **tập GIÁ TRỊ siết sau** (field vẫn `str`, chỉ hẹp enum) → KHÔNG phá contract, KHÔNG chặn APPROVED:
   - `vehicle_type` (G_1): `{"ô tô điện", "xe máy điện"}`
   - `vehicle_usage_type` (G_2): `{"cá nhân", "kinh doanh/dịch vụ", "taxi (GSM)"}`
   - `customer_type` (G_3): `{"cá nhân", "doanh nghiệp", "đại lý"}`

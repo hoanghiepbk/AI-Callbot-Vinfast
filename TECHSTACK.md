@@ -121,7 +121,7 @@ Toàn bộ logic *hỏi field nào tiếp theo · field nào đã confirm · khi
 | **TTS (+5, optional)** | **Piper (local, ONNX)** primary; interface để swap | edge-tts (video) / viXTTS (GPU) / VieNeu-TTS | Xem §4 — phân tích đầy đủ |
 | **Audio I/O** | **`sounddevice` + `numpy`** | `pyaudio` | numpy-native, ít lỗi build trên Windows hơn PyAudio |
 | **Frontend** | **CLI** (dev/eval) **+ Gradio** (video demo) | chỉ CLI | CLI cho iterate nhanh + chạy eval; Gradio mic-in + panel JSON live để quay video signature |
-| **Eval** | **pytest + metric tự viết + `jiwer` (WER) + LLM-as-judge** | — | Routing confusion matrix, slot F1, WER, latency p50/p95, chấm naturalness bằng rubric. **LLM-judge = model mạnh nhất sẵn có (cloud thương mại, dev-time), dev-time-only, Qwen-local fallback, document bản nộp không phụ thuộc.** Xem §6 |
+| **Eval** | **pytest + metric tự viết + `jiwer` (WER) + LLM-as-judge** | — | Routing confusion matrix, slot F1, WER, latency p50/p95, chấm naturalness bằng rubric. **LLM-judge = model cloud mạnh nhất sẵn có (qua `.env` `JUDGE_MODEL`), dev-time-only, Qwen-local fallback; bản nộp không phụ thuộc.** Xem §6 |
 | **Logging / Latency** | **stdlib `logging`** (hoặc `structlog`) + timer thủ công | — | Brief bắt buộc report latency per turn → log có cấu trúc |
 | **Config / Secrets** | **`python-dotenv` + `.env`** (+ `.env.example`) | — | **Tuyệt đối không hardcode** key/token — ô Reproducibility 20đ |
 
@@ -193,7 +193,7 @@ Brief chấm **độ rigour của thiết kế eval, KHÔNG phải điểm số*
 | Routing accuracy | metric tự viết | **Confusion matrix** 5×5 |
 | Slot accuracy | metric tự viết | **Precision/Recall/F1 per field** vs expected JSON (automated metric ✓) |
 | ASR quality | **`jiwer`** | **WER** trên `.wav` clip có reference transcript |
-| Dialogue quality | **LLM-as-judge** | Chấm naturalness/correctness theo rubric; **model mạnh nhất sẵn có (cloud thương mại, dev-time), dev-time-only, documented**, Qwen-local fallback |
+| Dialogue quality | **LLM-as-judge** | Chấm naturalness/correctness theo rubric; **model cloud mạnh nhất sẵn có (qua `.env` `JUDGE_MODEL`), dev-time-only**, Qwen-local fallback, documented |
 | Emergency/Sentiment | metric tự viết | Accuracy + **recall riêng cho emergency** (xem dưới) |
 | Latency | timer harness | **E2E tổng/lượt + breakdown ASR/LLM/TTS, p50/p95** |
 

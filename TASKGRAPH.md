@@ -221,7 +221,7 @@
 
 #### TASK-A32 · Evaluation Report `[A]`
 - **Depends:** A30, A31 · **P0 · ~90m**
-- **Task:** `docs/EVALUATION_REPORT.md` (Deliverable #4): mọi metric + **failure analysis (sai gì + VÌ SAO + hướng sửa)** + latency + ablation + đánh giá hạn chế trung thực.
+- **Task:** `docs/EVALUATION_REPORT.md` (Deliverable #4): mọi metric + **failure analysis (sai gì + VÌ SAO + hướng sửa)** + latency + ablation + đánh giá hạn chế trung thực + 1 dòng ghi rõ: *"Naturalness chấm bởi `<JUDGE_MODEL>`, eval-only, bản nộp không phụ thuộc."*
 - **Acceptance:** Given report, Then phủ 5 category + ≥3 exception + ≥1 automated metric + failure cases + latency per turn (đủ minimum brief §4).
 - **Constraints:** Trung thực, phơi lỗi. Không tô hồng.
 
