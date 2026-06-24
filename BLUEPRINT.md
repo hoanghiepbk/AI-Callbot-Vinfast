@@ -64,7 +64,7 @@ process(user_text):                          # = một lượt traversal trên L
   5. next_field = pick_next_missing(category, state)                  # deterministic; emergency bỏ prio>=90
   6. if next_field is None: state.complete = True
   7. if failed_turns >= 2: offer human                               (#7)
-  8. reply = response_node(next_field | pending_readback | closing, state)   # LLM: chỉ phrasing
+  8. reply = response.render(next_action, state)   # template-first; LLM chỉ lượt high-variance — xem §1A
   9. return TurnResult(reply, state, done=state.complete)
 
 # (#8) Hangup — 2 đường, cùng đổ về finalize(): (verbal) signals.hangup → chào 1 câu → finalize (bước 2);
@@ -72,9 +72,40 @@ process(user_text):                          # = một lượt traversal trên L
 #      LangGraph checkpoint giữ CallState xuyên lượt → interrupt finalize từ checkpoint cuối.
 ```
 
-> **Bất biến:** bước 2,3,5,6,7 + vòng 4 là **deterministic Python trong node**; LLM chỉ ở `nlu_node` & `response_node`. Bot vẫn gradeable & test được (25đ).
+> **Bất biến:** bước 2,3,5,6,7 + vòng 4 là **deterministic Python trong node**; LLM chỉ ở `nlu_node`, và `response_node` **chỉ gọi LLM cho lượt high-variance** (template-first — xem §1A). Bot vẫn gradeable & test được (25đ).
 
 **Post-call track** (chạy 1 lần khi `done` hoặc hangup): feed full transcript → 1 LLM call → `short_summary` + `sentimental_analysis` + `emergency`.
+
+---
+
+## 1A. Runtime + LangGraph Application Contract
+
+> Chốt cứng cách áp LangGraph + chiến lược response để **graph tối giản (≤5–7 node)** và latency tối ưu. KHÔNG đổi seam `process()`.
+
+### Phần 1 — Response strategy: template-first, LLM chỉ cho lượt "có sức nặng"
+- **Template (deterministic, KHÔNG gọi LLM):** câu hỏi xin field thường lệ ("cho em xin biển số xe ạ"), readback xác nhận ("em xác nhận số 09… đúng không ạ"), acknowledgement đơn giản.
+- **LLM (`response_node`) chỉ dùng cho lượt high-variance:** trấn an emergency (#6), hỏi rõ ambiguity (#3), redirect out-of-scope (#4), câu chào đóng máy + post-call summary.
+- Mỗi template có **2–3 biến thể xoay vòng** để tránh robotic.
+- `response.py` expose **`render(next_action, state)`**: theo *loại* `next_action` → chọn template hoặc gọi LLM. → cắt ~1 LLM call ở đa số lượt (nhanh hơn, tin cậy hơn, thin-LLM hơn).
+
+### Phần 2 — LangGraph application (4 luật cứng · graph ≤5–7 node)
+1. **`CallState` CHÍNH LÀ state schema của `StateGraph`** — single source of truth. Node nhận state → trả partial update → LangGraph merge. KHÔNG để LangGraph-state và `CallState` song song.
+2. **Một lượt = một `graph.invoke()`** (chạy hết một vòng node rồi return). **KHÔNG dùng `interrupt()`.**
+3. **KHÔNG checkpointer bền.** Engine giữ `CallState` in-memory, truyền vào mỗi `invoke`, lưu state trả về. Có thể dùng `MemorySaver` thread-per-call; prototype **không cần** saver bền (chỉ thêm nếu cần resume qua restart process — ngoài scope demo).
+4. **MỘT vòng slot-filling tham số hóa bằng `categories.py`, KHÔNG 5 subgraph.** Cả 5 category cùng luồng (extract → update → next-field → respond), chỉ khác *danh sách field*. Router chỉ set `state.category`, không rẽ subgraph riêng.
+
+> Node: `nlu · route · slot_update · next_field · respond` = **5 node** (≤7 ✓).
+
+### Phần 3 — Quyết định latency runtime
+- **ASR batch-per-utterance sau VAD** (không stream ASR) — đúng cho turn-based.
+- **Ollama `keep_alive`** giữ model resident → không cold-load mỗi lượt.
+- **Prompt economy:** chỉ truyền field của *category hiện tại* vào prompt (không cả 5); system prompt gọn.
+- **Thang fallback** (kích bởi phép đo, KHÔNG pre-optimize): LLM `Qwen3-8B → 4B → nhỏ hơn`; ASR `PhoWhisper-medium → small`.
+- **KHÔNG semantic cache** — mỗi call là slot-filling unique, cache vô ích ở đây.
+
+### Phần 4 — Measurement Gate (ngày đầu Wave 1)
+- Trước mọi tối ưu: đo **latency E2E một lượt thật** (mic→ASR→LLM→TTS) **và một lượt chỉ-template** (không LLM call).
+- Hai số này quyết định: template tiết kiệm bao nhiêu thật + có cần xuống thang model không. **Đo trước, tối ưu sau.**
 
 ---
 

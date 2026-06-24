@@ -113,10 +113,11 @@ Toàn bộ logic *hỏi field nào tiếp theo · field nào đã confirm · khi
 | **Env / Repro** | **`venv` + `pip` + `requirements.txt` pin `==`** | `uv` | Grader chạy đúng `pip install -r` như brief mô tả; chuẩn nhất, ít bất ngờ. (`uv` nhanh hơn nhưng thêm 1 thứ grader phải cài) |
 | **VAD** | **`silero-vad`** | `webrtcvad` | Bắt hết câu (turn-taking) cho mic live; không có VAD bot không biết khi nào khách nói xong |
 | **ASR (bắt buộc)** | **PhoWhisper-medium (CT2/faster-whisper)** mặc định | generic faster-whisper / `large-v3` trên GPU cho WER offline | WER tiếng Việt tốt nhất ngay từ đầu (differentiator "tiếng Việt thật"). CT2 convert một lần, có bản pre-converted trên HF; generic faster-whisper làm fallback |
-| **LLM runtime (bắt buộc, local)** | **Ollama** (Windows-native) | llama.cpp, vLLM | Backend local dễ nhất trên Windows, API OpenAI-compatible → đổi model 1 dòng. (vLLM cần GPU rời/Linux → loại cho laptop) |
-| **LLM model** | **Qwen-class 7–8B** (`qwen3:8b`, fallback `qwen2.5:7b-instruct`) + **A/B 1 bản Việt-tuned** | SeaLLM / Vistral-7B / PhoGPT-4B | Tiếng Việt tốt + JSON/tool-calling đáng tin, Apache-2.0. Q4 ~5GB vừa RAM. A/B **kiêm luôn 1 ablation eval** (xem §6) |
+| **LLM runtime (bắt buộc, local)** | **Ollama** (Windows-native) | llama.cpp, vLLM | Backend local dễ nhất trên Windows, API OpenAI-compatible → đổi model 1 dòng. (vLLM cần GPU rời/Linux → loại cho laptop). **`keep_alive`** giữ model resident → không cold-load mỗi lượt |
+| **LLM model** | **Qwen-class 7–8B** (`qwen3:8b`, fallback `qwen2.5:7b-instruct`) + **A/B 1 bản Việt-tuned** | SeaLLM / Vistral-7B / PhoGPT-4B | Tiếng Việt tốt + JSON/tool-calling đáng tin, Apache-2.0. Q4 ~5GB vừa RAM. A/B **kiêm luôn 1 ablation eval** (xem §6). Thang fallback (kích bởi đo): `Qwen3-8B → 4B → nhỏ hơn` |
 | **Structured output** | **Pydantic v2 + Ollama JSON/format mode** | `instructor`, `outlines` | Ép LLM trả đúng schema 5 category, validate phone/biển/VIN, bắt lỗi sớm |
 | **Dialogue core** | **LangGraph (StateGraph)** (§1.1) | hand-rolled FSM | Native routing + checkpointing/interrupt; giữ graph gọn, logic vẫn deterministic trong node |
+| **Response strategy** | **template-first** (deterministic) + LLM chỉ lượt high-variance | — | Cắt ~1 LLM call/lượt → nhanh + thin-LLM hơn; chi tiết [§1A BLUEPRINT](BLUEPRINT.md) |
 | **Chuẩn hóa thực thể VN** | **Module riêng `normalization/`** (chữ→số, "lẻ/linh/mươi", ghép biển/VIN/odo) **có test** | — | Khách Việt **nói** số điện thoại/biển số → ASR ra chữ. Không nhóm nào để ý lớp này (xem §5) |
 | **TTS (+5, optional)** | **Piper (local, ONNX)** primary; interface để swap | edge-tts (video) / viXTTS (GPU) / VieNeu-TTS | Xem §4 — phân tích đầy đủ |
 | **Audio I/O** | **`sounddevice` + `numpy`** | `pyaudio` | numpy-native, ít lỗi build trên Windows hơn PyAudio |
@@ -339,7 +340,7 @@ Mỗi category là 1 model, field `None` = chưa thu thập (drive "chỉ hỏi 
 
 | Rủi ro | Mức | Giảm thiểu |
 |---|---|---|
-| Latency ASR+LLM trên CPU quá cao cho "live" | Cao | medium/small int8 + Qwen Q4; đo sớm Phase 0; hạ size / iGPU Vulkan nếu cần |
+| Latency ASR+LLM trên CPU quá cao cho "live" | Cao | **template-first cắt ~1 LLM call/lượt** + Ollama `keep_alive` + thang fallback (`Qwen3-8B→4B`, `PhoWhisper medium→small`) + prompt chỉ field của category hiện tại; **đo trước (Measurement Gate §1A), không pre-optimize**; **KHÔNG** semantic cache (mỗi call unique) |
 | LLM trả JSON sai schema | TB | Pydantic validate + retry + JSON mode |
 | Re-ask field đã confirm | Cao | **Đã giải quyết bằng kiến trúc state-machine (LangGraph)** |
 | TTS edge-tts fail khi repro offline | TB | **Piper local làm primary**; edge-tts chỉ cho video |

@@ -105,11 +105,12 @@
 
 #### TASK-A13 · CallState + LangGraph StateGraph (happy-path) `[A]`
 - **Depends:** A11, A12 · **P0 · ~90m**
-- **Task:** `dialogue/state.py` (`CallState` = LangGraph state schema: dict `Slot`, `category`, `turn_index`, `failed_turns`, `emergency`, `complete`) + `dialogue/graph.py` (StateGraph: nodes + edges) + `dialogue/nodes.py` (nlu / route / slot_update / next_field / respond). `dialogue/engine.py` bọc graph, expose `process()`/`finalize()`/`reset()` theo [BLUEPRINT.md §1](BLUEPRINT.md) — **normalize gọi per-field SAU extraction** (D2); **chưa cần 8 exception đầy đủ**, chỉ happy path + missing-field (#1) + hangup finalize (#8).
+- **Task:** `dialogue/state.py` (`CallState` = LangGraph state schema: dict `Slot`, `category`, `turn_index`, `failed_turns`, `emergency`, `complete`) + `dialogue/graph.py` (StateGraph: nodes + edges) + `dialogue/nodes.py` (nlu / route / slot_update / next_field / respond). `dialogue/engine.py` bọc graph, expose `process()`/`finalize()`/`reset()` theo [BLUEPRINT.md §1](BLUEPRINT.md) — **normalize gọi per-field SAU extraction** (D2); **chưa cần 8 exception đầy đủ**, chỉ happy path + missing-field (#1) + hangup finalize (#8). `respond` dùng **template-first** (`response.render(next_action, state)`, 2–3 biến thể/template; LLM chỉ lượt high-variance — [BLUEPRINT.md §1A](BLUEPRINT.md) Phần 1).
 - **Acceptance:**
   - Given G_3 happy path 4 lượt, When chạy, Then `finalize()` trả đúng `FinalOutput` schema, không re-ask field đã confirm (exc #1).
   - Given gọi `finalize()` giữa chừng, Then field chưa confirm = `null` (exc #8).
-- **Constraints:** Dùng `LLM`/`Normalizer` qua protocol (test bằng fake). Không nhảy vào audio/asr.
+  - **Measurement Gate (§1A):** đo latency **một lượt chỉ-template** (no LLM) vs **một lượt có-LLM** ngay khi A10 sẵn sàng.
+- **Constraints:** Dùng `LLM`/`Normalizer` qua protocol (test bằng fake). Không nhảy vào audio/asr. **4 luật LangGraph ([BLUEPRINT.md §1A](BLUEPRINT.md) Phần 2):** (1) `CallState` = state schema của StateGraph (1 nguồn duy nhất); (2) 1 lượt = 1 `graph.invoke()`, **KHÔNG** `interrupt()`; (3) **KHÔNG** checkpointer bền (in-memory / `MemorySaver` thread-per-call); (4) MỘT vòng slot-filling tham số hóa bằng `categories.py`, **KHÔNG** 5 subgraph. **Graph ≤5–7 node.**
 
 #### TASK-A14 · Post-call track `[A]`
 - **Depends:** A10 · **P1 · ~45m**
@@ -195,6 +196,7 @@
   - Given mic live, When 1 lượt, Then ASR→engine→reply chạy end-to-end, latency breakdown in ra.
   - Given `--text`, Then gõ input thay vì nói (cho dev/eval).
   - Given silence-timeout / disconnect / Ctrl-C, Then gọi `engine.finalize()` → partial JSON, field chưa confirm = `null` (#8, D4).
+  - **Measurement Gate ([BLUEPRINT.md §1A](BLUEPRINT.md) Phần 4):** đo & log latency E2E **một lượt thật** (mic→ASR→LLM→TTS) **và một lượt chỉ-template** — TRƯỚC mọi tối ưu.
 - **Constraints:** **B sở hữu file này, A review** (chỗ ráp 2 track). Dùng interface, không sửa nội bộ engine.
 
 #### TASK-B22 · Gradio UI `[B]`
@@ -267,6 +269,8 @@
 > **Bất biến chống trùng:** mỗi task đụng file thuộc đúng 1 track (xem owner ở [PLAN.md §4.1](PLAN.md)); file shared (`schemas.py`, `*/base.py`, `pipeline.py`, `requirements.txt`) theo luật [PLAN.md §4.2–4.3](PLAN.md). Wave 0 merge trước → interface đóng băng → A/B song song không chờ nhau.
 
 > **Lưu ý lịch (D6/D9):** estimate là **thứ tự**, không phải lịch cứng. Cắm buffer cho A10/A12 (prompt-tuning local model là mỏ thời gian lớn nhất). B chèn **B14 (thu audio)** vào slot rảnh ngày 4–6. Critical path giữ nguyên: 002→A12→A13→A20→A21→A30→A32.
+
+> **Measurement Gate (§1A Phần 4):** đo latency **chỉ-template** sớm ở Wave 1 (khi A10 chạy), và **E2E thật** ngay khi pipeline tối thiểu (B21) chạy được — **đo TRƯỚC khi tối ưu**, không pre-optimize.
 
 ---
 
