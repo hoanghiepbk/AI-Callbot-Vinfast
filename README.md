@@ -121,7 +121,7 @@ src/callbot/
   audio/             # mic capture, VAD, playback
   asr/               # faster-whisper wrapper (interface + impl)
   llm/               # Ollama client, versioned prompts
-  dialogue/          # engine (FSM), state, categories, intent, extraction,
+  dialogue/          # engine (LangGraph), graph, nodes, state, categories, values, intent, extraction,
                      # exceptions, response, post_call
   normalization/     # spoken-Vietnamese number/plate/VIN normalization
   models/            # Pydantic schemas (data contract)
@@ -141,11 +141,11 @@ docs/                # ARCHITECTURE.md, EVALUATION_REPORT.md
 |---|---|
 | Language | Python 3.11 |
 | VAD | silero-vad |
-| ASR | faster-whisper (medium, int8); PhoWhisper as accuracy upgrade |
+| ASR | PhoWhisper-medium (CT2/faster-whisper) default; generic faster-whisper fallback |
 | LLM runtime | Ollama |
 | LLM model | Qwen-class 7–8B (+ A/B against a Vietnamese-tuned model) |
 | Structured output | Pydantic v2 + JSON mode |
-| Dialogue | Hand-rolled deterministic state machine |
+| Dialogue | LangGraph StateGraph (deterministic state machine) |
 | TTS (+5) | Piper (local); pluggable interface |
 | Frontend | CLI (dev/eval) + Gradio (demo) |
 | Eval | pytest + jiwer (WER) + LLM-as-judge |

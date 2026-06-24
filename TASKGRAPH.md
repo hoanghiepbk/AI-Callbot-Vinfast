@@ -19,7 +19,7 @@
   │ TASK-A10 llm client+prompts   │                      │ TASK-B10 normalization (+test) │◄─ chỉ cần 001
   │ TASK-A11 categories+priority  │                      │ TASK-B11 asr wrapper (+file)   │
   │ TASK-A12 nlu (intent+extract) │◄─A10                 │ TASK-B12 mic + VAD             │◄─ chỉ cần 001
-  │ TASK-A13 SlotState+FSM loop   │◄─A11,A12             │ TASK-B13 conversation corpus   │◄─002 (A duyệt expected)
+  │ TASK-A13 CallState+LangGraph  │◄─A11,A12             │ TASK-B13 conversation corpus   │◄─002 (A duyệt expected)
   │ TASK-A14 post-call track      │◄─A10                 └──────────────┬───────────────┘
   └──────────────┬──────────────┘                                     │
                  ▼ WAVE 2                                              ▼ WAVE 2
@@ -39,7 +39,7 @@
 
 **Đường găng (critical path):** 002 → A12 → A13 → A20 → A21 → A30 → A32. Track B chạy song song; điểm chờ duy nhất của B là `engine.py` interface (có từ Wave 0) → B không bị A block.
 
-**Mẹo khởi động:** B bắt **TASK-B10 (normalization)** ngay sau scaffold — thuần Python, 0 phụ thuộc engine → B có việc làm ngay trong lúc A dựng FSM.
+**Mẹo khởi động:** B bắt **TASK-B10 (normalization)** + **TASK-B14 (thu audio WER)** ngay sau scaffold — thuần Python / không phụ thuộc engine → B có việc ngay trong lúc A dựng graph.
 
 ---
 
@@ -58,11 +58,12 @@
 
 #### TASK-002 · Pydantic schemas (DATA CONTRACT) `[PAIR]`
 - **Depends:** 001 · **Priority:** P0 · **Effort:** ~45m
-- **Task:** Hiện thực `models/schemas.py` đúng [BLUEPRINT.md §2](BLUEPRINT.md): `SlotStatus`, `Slot`, `IntentSignals`, `NLUResult`, `PostCall`, `FinalOutput`.
-- **Specs:** Field name 5 category **đúng tuyệt đối** brief (G_1/G_4/G_5 `phone`; G_2 `owner_phone`; G_3 `order_phone`; G_1/G_2 `vehicle_model`; G_4/G_5 `vehicle_line`; G_5 `current_odo` optional). Validator phone (10 số), VIN (17 ký tự).
+- **Task:** Hiện thực `models/schemas.py` đúng [BLUEPRINT.md §2](BLUEPRINT.md): `SlotStatus`, `Slot`, `IntentSignals`, `NLUResult`, `PostCall`, `FinalOutput` + `dialogue/values.py` (tập giá trị field phân loại, D9) + hằng `READBACK_REQUIRED` (D10).
+- **Specs:** Field name 5 category **đúng tuyệt đối** brief (G_1/G_4/G_5 `phone`; G_2 `owner_phone`; G_3 `order_phone`; G_1/G_2 `vehicle_model`; G_4/G_5 `vehicle_line`; G_5 `current_odo` optional). Validator phone (10 số), VIN (17 ký tự), plate (regex VN) — **trả `parse_failed`** (D3). `READBACK_REQUIRED = {phone, owner_phone, order_phone, license_plate_vin}`. `values.py`: `vehicle_type` / `vehicle_usage_type` / `customer_type`.
 - **Acceptance:**
   - Given `FinalOutput` với fields thiếu, When serialize, Then field thiếu = `null`, đúng cấu trúc `{category, fields, post_call}`.
   - Given phone "0885234567", Then validator pass; "abc" → fail.
+  - Given plate/VIN sai format, Then `parse_failed=True`.
 - **Constraints:** **FROZEN sau merge.** Đổi field phải sync 2 người. Không thêm field ngoài brief.
 
 #### TASK-003 · Interface base classes `[PAIR]`
@@ -102,9 +103,9 @@
   - Given "tôi cần hỏi chút", Then `category=None`.
 - **Constraints:** Không tự update state (đó là việc engine). Chỉ trả `NLUResult`.
 
-#### TASK-A13 · SlotState + FSM happy-path loop `[A]`
+#### TASK-A13 · CallState + LangGraph StateGraph (happy-path) `[A]`
 - **Depends:** A11, A12 · **P0 · ~90m**
-- **Task:** `dialogue/state.py` (`CallState`: dict các `Slot`, `category`, `turn_index`, `failed_turns`, `emergency`, `complete`). `dialogue/engine.py` implement `process()`/`finalize()`/`reset()` theo [BLUEPRINT.md §1](BLUEPRINT.md) — **chưa cần 8 exception đầy đủ**, chỉ happy path + missing-field (exc #1) + hangup finalize (exc #8).
+- **Task:** `dialogue/state.py` (`CallState` = LangGraph state schema: dict `Slot`, `category`, `turn_index`, `failed_turns`, `emergency`, `complete`) + `dialogue/graph.py` (StateGraph: nodes + edges) + `dialogue/nodes.py` (nlu / route / slot_update / next_field / respond). `dialogue/engine.py` bọc graph, expose `process()`/`finalize()`/`reset()` theo [BLUEPRINT.md §1](BLUEPRINT.md) — **normalize gọi per-field SAU extraction** (D2); **chưa cần 8 exception đầy đủ**, chỉ happy path + missing-field (#1) + hangup finalize (#8).
 - **Acceptance:**
   - Given G_3 happy path 4 lượt, When chạy, Then `finalize()` trả đúng `FinalOutput` schema, không re-ask field đã confirm (exc #1).
   - Given gọi `finalize()` giữa chừng, Then field chưa confirm = `null` (exc #8).
@@ -122,21 +123,22 @@
 
 #### TASK-B10 · Vietnamese normalization (+test) `[B]` ⚡ START NGAY
 - **Depends:** 001 · **P0 · ~90m**
-- **Task:** `normalization/vietnamese_numbers.py` implement `Normalizer`: chữ→số ("không tám tám lẻ năm"→`0885`), "lẻ/linh", "mươi/mười", ghép biển số ("ba mươi a năm sáu bảy"→`30A-567`), VIN, odo ("năm vạn cây"→`50000`). `tests/test_normalization.py` ≥15 case.
+- **Task:** `normalization/vietnamese_numbers.py` implement `Normalizer`, expose **`normalize_field(name, raw) -> (value, parse_failed)`** (per-field, typed — D2/D3): chữ→số ("không tám tám lẻ năm"→`0885`), "lẻ/linh", "mươi/mười", ghép biển số ("ba mươi a năm sáu bảy"→`30A-567`), VIN, odo ("năm vạn cây"→`50000`). `tests/test_normalization.py` ≥15 case.
 - **Acceptance:**
   - Given "không chín một hai ba bốn năm sáu bảy tám", Then `0912345678`.
   - Given "ba mươi a chấm năm sáu bảy chấm tám chín", Then chuẩn hóa biển số hợp lệ.
+  - Given "không chín một" (thiếu số), Then `parse_failed=True` (→ trigger garbled #5).
   - Given test suite, Then ≥15 case pass.
 - **Constraints:** Pure Python, 0 dependency engine/LLM. **Đây là differentiator — đầu tư test kỹ.**
 
 #### TASK-B11 · ASR wrapper + file mode `[B]`
 - **Depends:** 003 · **P0 · ~75m**
-- **Task:** `asr/faster_whisper_asr.py` implement `ASR`: mic buffer→text (`language="vi"`, `compute_type="int8"`), `from_file()` cho WER eval, đo `latency_ms`.
-- **Specs:** Model size qua `.env` (`ASR_MODEL=medium`). Fallback `small` nếu latency cao.
+- **Task:** `asr/faster_whisper_asr.py` implement `ASR`: mic buffer→text (`language="vi"`, `compute_type="int8"`), `from_file()` cho WER eval, đo `latency_ms`. **Default = PhoWhisper-CT2** — thêm bước convert/pull PhoWhisper CT2 (hoặc bản pre-converted trên HF); generic faster-whisper là fallback (D1).
+- **Specs:** Model qua `.env` (`ASR_MODEL=phowhisper-medium` default; generic `medium`/`small` fallback nếu latency cao).
 - **Acceptance:**
   - Given 1 `.wav` tiếng Việt, When `from_file()`, Then trả transcript hợp lý + `latency_ms`.
   - Given mic buffer, Then `transcribe()` trả `ASRResult`.
-- **Constraints:** Không xử lý dialogue. PhoWhisper là nâng cấp sau (ghi TODO).
+- **Constraints:** Không xử lý dialogue. Generic faster-whisper là fallback nếu CT2 trục trặc.
 
 #### TASK-B12 · Mic capture + VAD `[B]`
 - **Depends:** 001 · **P0 · ~75m**
@@ -151,6 +153,12 @@
 - **Acceptance:** Given mọi file, Then parse JSON OK, đủ ≥10 + ≥3 exception, field name khớp schema.
 - **Constraints:** Tiếng Việt đời thật, không "sách giáo khoa". Dùng dòng xe VinFast thật.
 
+#### TASK-B14 · Thu audio WER `[B]` ⚡ START sớm
+- **Depends:** 001 · **P1 · ~60m**
+- **Task:** Thu ≥5 clip tiếng Việt thật (đa giọng, có ca đọc số/biển bằng lời) → `scenarios/audio/*.wav` + `*.reference.txt`.
+- **Acceptance:** ≥5 cặp wav+reference, dùng được cho `jiwer` WER (TASK-A30).
+- **Constraints:** Giọng & domain thật (D5). Lấp slack giữa dự án của B (D6).
+
 ---
 
 ### ───────── WAVE 2 ─────────
@@ -162,7 +170,8 @@
   - #2 correction: confirm field rồi sửa → giá trị mới, **không hỏi lại field đã confirm**.
   - #3 ambiguous: input mơ hồ → hỏi **đúng 1 câu** trước khi route.
   - #4 out-of-scope: hỏi ngoài phạm vi → xin lỗi + đề nghị human.
-  - #5 garbled: phone không parse → **đọc lại xác nhận** trước khi lưu.
+  - #5 garbled: **validator parse-fail** (phone/plate/VIN) → **đọc lại xác nhận** trước khi lưu.
+  - #10 readback (D10): phone/plate/VIN **luôn đọc lại xác nhận** dù parse OK.
   - #6 emergency: bắt ngay → cấp hotline + bỏ field priority thấp.
   - #7 stuck: 2 lượt không tiến triển → offer human.
 - **Constraints:** Tất cả deterministic dựa cờ NLU. Không để LLM "tự nhớ".
@@ -185,6 +194,7 @@
 - **Acceptance:**
   - Given mic live, When 1 lượt, Then ASR→engine→reply chạy end-to-end, latency breakdown in ra.
   - Given `--text`, Then gõ input thay vì nói (cho dev/eval).
+  - Given silence-timeout / disconnect / Ctrl-C, Then gọi `engine.finalize()` → partial JSON, field chưa confirm = `null` (#8, D4).
 - **Constraints:** **B sở hữu file này, A review** (chỗ ráp 2 track). Dùng interface, không sửa nội bộ engine.
 
 #### TASK-B22 · Gradio UI `[B]`
@@ -199,13 +209,13 @@
 
 #### TASK-A30 · Metric suite đầy đủ `[A]`
 - **Depends:** A21, B11, B13 · **P0 · ~120m**
-- **Task:** Mở rộng `metrics.py`: confusion matrix 5×5, **emergency recall** (adversarial set gồm ca "giọng bình tĩnh"), sentiment accuracy, **WER (jiwer)** trên `scenarios/audio/`, **LLM-as-judge** naturalness, **latency p50/p95** breakdown ASR/LLM/TTS.
-- **Acceptance:** Given full suite, Then sinh bảng mọi metric + emergency recall tách riêng + latency p50/p95.
+- **Task:** Mở rộng `metrics.py`: confusion matrix 5×5, **emergency recall** (adversarial set gồm ca "giọng bình tĩnh"), sentiment accuracy, **WER (jiwer)** trên `scenarios/audio/`, **LLM-as-judge** naturalness (**model cloud mạnh nhất sẵn có, dev-time-only, documented**, Qwen-local fallback — D7), **latency E2E tổng/lượt + breakdown ASR/LLM/TTS, p50/p95** (D11).
+- **Acceptance:** Given full suite, Then sinh bảng mọi metric + emergency recall tách riêng + latency E2E tổng/lượt + p50/p95.
 - **Constraints:** WER cần ≥5 `.wav` + reference (B13/B11 cấp).
 
 #### TASK-A31 · Ablation study `[A]`
 - **Depends:** A30 · **P1 · ~90m**
-- **Task:** Chạy & ghi delta: có/không FSM · có/không tune recall · Qwen vs Việt-tuned · laptop medium vs GPU large WER.
+- **Task:** Chạy & ghi delta: có/không state-machine (LangGraph vs để LLM tự giữ state) · có/không tune recall · Qwen vs Việt-tuned · laptop medium vs GPU large WER.
 - **Acceptance:** Given ablation runs, Then bảng so sánh có số liệu cho từng quyết định.
 - **Constraints:** A/B model qua `.env` (tái dùng A10). Ghi rõ cấu hình mỗi run.
 
@@ -223,13 +233,13 @@
 
 #### TASK-S30 · Architecture Doc finalize `[PAIR]`
 - **Depends:** đa số (draft từ Wave 0) · **P0 · ~90m**
-- **Task:** `docs/ARCHITECTURE.md` (Deliverable #1): pipeline, model choices, conversation flow, **8 chiến lược exception**, decisions & trade-offs (kể cả đã loại: LangGraph, edge-tts-primary, RAG).
+- **Task:** `docs/ARCHITECTURE.md` (Deliverable #1): pipeline, model choices, conversation flow, **8 chiến lược exception**, decisions & trade-offs (dùng Decision Log [BLUEPRINT.md §0](BLUEPRINT.md); phương án đã loại: FSM-thuần, edge-tts-primary, RAG).
 - **Specs:** **A** viết phần dialogue/exception/eval; **B** viết ASR/TTS/normalization/pipeline (section khác nhau → ít conflict).
 - **Acceptance:** Given doc, Then đồng bộ với code thực tế, có trade-off table.
 
 #### TASK-S31 · Reproducibility `[PAIR]`
 - **Depends:** all code · **P0 · ~60m**
-- **Task:** `requirements.txt` pin `==`; `.env.example` đủ biến; README chạy được; **quét repo tránh leak secret**; test `pip install -r` trên máy/venv sạch.
+- **Task:** `requirements.txt` pin `==` (gồm `langgraph`, `langchain-core` — D12); `scripts/setup.ps1|sh` pull Ollama model + ASR/TTS weights + note min-HW (D8); `.env.example` đủ biến; README chạy được; **quét repo tránh leak secret**; test `pip install -r` trên máy/venv sạch.
 - **Acceptance:** Given máy sạch, When `pip install -r` + theo README, Then bot chạy; `git grep` không thấy secret.
 - **Constraints:** Không secret trong code (ô 20đ).
 
@@ -248,13 +258,15 @@
 | 1–2 | — | **B10 normalization** (start ngay) |
 | 2–3 | A10 llm, A11 categories | B11 asr, B12 mic+vad |
 | 3–4 | A12 nlu, A14 post-call | B13 corpus (A duyệt expected) |
-| 4–6 | **A13 FSM loop** | B20 tts |
+| 4–6 | **A13 LangGraph graph** | B20 tts · **B14 thu audio WER** (slot rảnh) |
 | 6–8 | **A20 exceptions** | **B21 pipeline+CLI** (A review), B22 gradio |
 | 8–10 | A21 eval harness | B30 signature demo dựng |
 | 10–13 | A30 metrics, A31 ablation, A32 report | B30 quay video, hỗ trợ A30 (WER audio) |
 | 13–14 | `[PAIR]` S30 arch-doc · S31 repro · S32 VERIFY | `[PAIR]` cùng |
 
 > **Bất biến chống trùng:** mỗi task đụng file thuộc đúng 1 track (xem owner ở [PLAN.md §4.1](PLAN.md)); file shared (`schemas.py`, `*/base.py`, `pipeline.py`, `requirements.txt`) theo luật [PLAN.md §4.2–4.3](PLAN.md). Wave 0 merge trước → interface đóng băng → A/B song song không chờ nhau.
+
+> **Lưu ý lịch (D6/D9):** estimate là **thứ tự**, không phải lịch cứng. Cắm buffer cho A10/A12 (prompt-tuning local model là mỏ thời gian lớn nhất). B chèn **B14 (thu audio)** vào slot rảnh ngày 4–6. Critical path giữ nguyên: 002→A12→A13→A20→A21→A30→A32.
 
 ---
 
