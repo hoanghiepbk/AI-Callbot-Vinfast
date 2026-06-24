@@ -110,7 +110,7 @@
   - Given G_3 happy path 4 lượt, When chạy, Then `finalize()` trả đúng `FinalOutput` schema, không re-ask field đã confirm (exc #1).
   - Given gọi `finalize()` giữa chừng, Then field chưa confirm = `null` (exc #8).
   - **Measurement Gate (§1A):** đo latency **một lượt chỉ-template** (no LLM) vs **một lượt có-LLM** ngay khi A10 sẵn sàng.
-- **Constraints:** Dùng `LLM`/`Normalizer` qua protocol (test bằng fake). Không nhảy vào audio/asr. **4 luật LangGraph ([BLUEPRINT.md §1A](BLUEPRINT.md) Phần 2):** (1) `CallState` = state schema của StateGraph (1 nguồn duy nhất); (2) 1 lượt = 1 `graph.invoke()`, **KHÔNG** `interrupt()`; (3) **KHÔNG** checkpointer bền (in-memory / `MemorySaver` thread-per-call); (4) MỘT vòng slot-filling tham số hóa bằng `categories.py`, **KHÔNG** 5 subgraph. **Graph ≤5–7 node.**
+- **Constraints:** Dùng `LLM`/`Normalizer` qua protocol (test bằng fake). Không nhảy vào audio/asr. **4 luật LangGraph ([BLUEPRINT.md §1A](BLUEPRINT.md) Phần 2):** (1) `CallState` = state schema của StateGraph (1 nguồn duy nhất); (2) 1 lượt = 1 `graph.invoke()`, **KHÔNG** `interrupt()`; (3) **KHÔNG** checkpointer bền (in-memory / `MemorySaver` thread-per-call); (4) MỘT vòng slot-filling tham số hóa bằng `categories.py`, **KHÔNG** 5 subgraph. **Graph ≤5–7 node.** **Node = hàm thuần `(state)->update`, không mutate self/global** ([BLUEPRINT.md §1A](BLUEPRINT.md) Phần 2 node convention).
 
 #### TASK-A14 · Post-call track `[A]`
 - **Depends:** A10 · **P1 · ~45m**

@@ -47,7 +47,7 @@
 process(user_text):                          # = một lượt traversal trên LangGraph StateGraph
   1. nlu = nlu_node(user_text, category)      # LLM: category + extracted_fields(raw) + corrected + signals
   2. apply_signals(nlu.signals):              # node deterministic
-       emergency → flag + đẩy hotline + hạ ưu tiên field thấp        (#6)
+       emergency (cờ_LLM OR keyword OR sentiment=="urgent") → flag + đẩy hotline + hạ ưu tiên field thấp + hoãn readback   (#6)
        out_of_scope → redirect / transfer human                      (#4)
        correction → đánh dấu corrected_fields                        (#2)
        hangup (verbal: "thôi/để sau") → chào lịch sự 1 câu → finalize() partial  (#8 verbal)
@@ -58,7 +58,7 @@ process(user_text):                          # = một lượt traversal trên L
         norm = normalizer.normalize_field(field, raw)                 # per-field, typed
         if norm.parse_failed:                                         # (#5 garbled, D3)
              slot.status = PENDING; queue readback(field); continue
-        if field in READBACK_REQUIRED and not slot.readback_done:     # phone/plate/VIN (D10)
+        if field in READBACK_REQUIRED and not slot.readback_done and not state.emergency:  # phone/plate/VIN (D10); emergency THẮNG readback → hoãn (FIX4)
              slot.value = norm.value; slot.status = PENDING; queue readback(field); continue
         slot.value = norm.value; slot.status = confirmed | corrected
   5. next_field = pick_next_missing(category, state)                  # deterministic; emergency bỏ prio>=90
@@ -73,6 +73,10 @@ process(user_text):                          # = một lượt traversal trên L
 ```
 
 > **Bất biến:** bước 2,3,5,6,7 + vòng 4 là **deterministic Python trong node**; LLM chỉ ở `nlu_node`, và `response_node` **chỉ gọi LLM cho lượt high-variance** (template-first — xem §1A). Bot vẫn gradeable & test được (25đ).
+
+> **Emergency = OR 3 nguồn (#6, hybrid):** `cờ_LLM OR keyword OR sentiment=="urgent"`. Keyword list (tai nạn / cháy / kẹt cao tốc / mất phanh…) nằm **trong code có test**, KHÔNG trong prompt. Chỉ `sentiment=="urgent"` mới trigger (frustrated ≠ emergency) → tránh false-positive làm hỏng metric emergency-recall.
+
+> **Emergency THẮNG Readback (#6 > D10):** trong ca khẩn cấp → cấp hotline + thu *tối thiểu để điều xe* (vị trí, số gọi lại), **KHÔNG** chèn readback rườm rà; readback field định danh (phone/plate/VIN) để *sau* khi đã trấn an / điều xe. Lý do: tốc độ > độ chính xác hoàn hảo một field trong ca nguy hiểm.
 
 **Post-call track** (chạy 1 lần khi `done` hoặc hangup): feed full transcript → 1 LLM call → `short_summary` + `sentimental_analysis` + `emergency`.
 
@@ -95,6 +99,10 @@ process(user_text):                          # = một lượt traversal trên L
 4. **MỘT vòng slot-filling tham số hóa bằng `categories.py`, KHÔNG 5 subgraph.** Cả 5 category cùng luồng (extract → update → next-field → respond), chỉ khác *danh sách field*. Router chỉ set `state.category`, không rẽ subgraph riêng.
 
 > Node: `nlu · route · slot_update · next_field · respond` = **5 node** (≤7 ✓).
+
+> **Node convention (bất biến):** **Node = hàm thuần `(state) -> update`** — KHÔNG mutate `self`/global, KHÔNG giữ state ẩn ngoài `CallState`. Engine/LangGraph chỉ điều phối; logic nằm trong hàm node, test được bằng cách gọi trực tiếp.
+>
+> *Vì node là hàm thuần, nếu LangGraph phát sinh chi phí không đáng (đo ở Measurement Gate §1A Phần 4), có thể thay nền bằng vòng lặp gọi node trực tiếp trong < 1 buổi — logic không đổi. (Bảo hiểm kiến trúc, KHÔNG phải kế hoạch đổi.)*
 
 ### Phần 3 — Quyết định latency runtime
 - **ASR batch-per-utterance sau VAD** (không stream ASR) — đúng cho turn-based.

@@ -316,8 +316,8 @@ Mỗi category là 1 model, field `None` = chưa thu thập (drive "chỉ hỏi 
 | 2 | Customer corrects | NLU phát cờ `correction` + giá trị mới → overwrite slot, acknowledge, đi tiếp **không lặp lại field đã confirm** |
 | 3 | Ambiguous intent | NLU `category=null` → hỏi **đúng 1 câu** làm rõ trước khi route |
 | 4 | Out-of-scope | NLU cờ `out_of_scope` → xin lỗi lịch sự + redirect / đề nghị chuyển human |
-| 5 | Garbled input | **Validator field parse-fail** (phone/plate/VIN) → **đọc lại + xác nhận** trước khi lưu (không dựa ASR-confidence) |
-| 6 | Emergency | NLU `emergency=true` → **cấp hotline cứu hộ ngay**, bỏ qua field ưu tiên thấp (vd odo) |
+| 5 | Garbled input | **Validator field parse-fail** (phone/plate/VIN) → **đọc lại + xác nhận** trước khi lưu (không dựa ASR-confidence). **Ngoại lệ: khi emergency → hoãn readback** (#6 thắng D10), readback định danh để sau khi đã điều xe |
+| 6 | Emergency | **Detect hybrid = `cờ_LLM OR keyword OR sentiment=="urgent"`** (keyword nằm trong code có test, KHÔNG trong prompt; chỉ `urgent` mới trigger, frustrated ≠ emergency) → **cấp hotline cứu hộ ngay**, bỏ qua field ưu tiên thấp (vd odo), **hoãn readback** (emergency THẮNG D10): thu tối thiểu để điều xe (vị trí, số gọi lại) trước |
 | 7 | Stuck 2+ turns | counter `failed_turns >= 2` → đề nghị chuyển human |
 | 8 | Hangs up mid-call | I/O **silence-timeout / disconnect / interrupt** → `finalize()` dump partial JSON, field chưa confirm = `null` |
 
