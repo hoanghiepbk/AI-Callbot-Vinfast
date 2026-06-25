@@ -32,3 +32,11 @@ _load_env_file(_ENV_PATH)
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 LLM_MODEL = os.environ.get("LLM_MODEL", "qwen3:8b")
+TTS_ENGINE = os.environ.get("TTS_ENGINE", "piper").strip().lower() or "piper"
+PIPER_BINARY = os.environ.get("PIPER_BINARY", "piper").strip() or "piper"
+PIPER_VOICE = os.environ.get("PIPER_VOICE", "").strip()
+PIPER_SPEAKER = os.environ.get("PIPER_SPEAKER", "").strip()
+try:
+    PIPER_SAMPLE_RATE = int(os.environ.get("PIPER_SAMPLE_RATE", "22050"))
+except ValueError:
+    PIPER_SAMPLE_RATE = 22050

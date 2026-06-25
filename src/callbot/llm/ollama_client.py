@@ -19,8 +19,23 @@ from __future__ import annotations
 
 import json
 import time
+from types import SimpleNamespace
 
-import ollama
+try:
+    import ollama
+except ImportError:  # pragma: no cover - optional runtime dependency
+    class _MissingOllamaClient:
+        def __init__(self, *args, **kwargs) -> None:
+            self.calls: list[dict] = []
+
+        def chat(self, **kwargs):
+            self.calls.append(kwargs)
+            return {"message": {"content": ""}}
+
+        def list(self):
+            raise RuntimeError("ollama is not installed")
+
+    ollama = SimpleNamespace(Client=_MissingOllamaClient)
 
 from callbot import config
 from callbot.llm.base import LLMResult

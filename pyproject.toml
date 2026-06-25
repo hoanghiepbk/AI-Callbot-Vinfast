@@ -44,5 +44,5 @@ python_version = "3.12"
 ignore_missing_imports = true   # several ML libs ship no type stubs
 
 [tool.pytest.ini_options]
-norecursedirs = ["pytest-cache-files-*"]
+norecursedirs = [".pytest_cache", "pytest-cache-files-*"]
 pythonpath = ["src"]
