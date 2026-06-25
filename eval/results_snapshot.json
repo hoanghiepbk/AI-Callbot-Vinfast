@@ -1,0 +1,414 @@
+{
+  "mode": "scripted",
+  "metrics": {
+    "routing_accuracy": {
+      "name": "routing_accuracy",
+      "accuracy": 1.0,
+      "correct": 24,
+      "total": 24,
+      "labels": [
+        "G_1",
+        "G_2",
+        "G_3",
+        "G_4",
+        "G_5",
+        "null"
+      ],
+      "confusion": [
+        [
+          6,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          4,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          7,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          3,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          2,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          2
+        ]
+      ]
+    },
+    "slot_filling_f1": {
+      "name": "slot_filling_f1",
+      "macro_f1": 1.0,
+      "per_field": {
+        "city_name": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0
+        },
+        "current_location": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 8,
+          "fp": 0,
+          "fn": 0
+        },
+        "current_odo": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0
+        },
+        "customer_type": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 3,
+          "fp": 0,
+          "fn": 0
+        },
+        "full_name": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 21,
+          "fp": 0,
+          "fn": 0
+        },
+        "license_plate_vin": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 9,
+          "fp": 0,
+          "fn": 0
+        },
+        "order_code_dealer": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 3,
+          "fp": 0,
+          "fn": 0
+        },
+        "order_phone": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0
+        },
+        "owner_phone": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0
+        },
+        "phone": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 7,
+          "fp": 0,
+          "fn": 0
+        },
+        "service_center": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0
+        },
+        "vehicle_condition": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 10,
+          "fp": 0,
+          "fn": 0
+        },
+        "vehicle_condition_details": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0
+        },
+        "vehicle_line": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0
+        },
+        "vehicle_model": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 6,
+          "fp": 0,
+          "fn": 0
+        },
+        "vehicle_type": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0
+        },
+        "vehicle_usage_type": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "per_category": {
+        "G_1": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 38,
+          "fp": 0,
+          "fn": 0
+        },
+        "G_2": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 16,
+          "fp": 0,
+          "fn": 0
+        },
+        "G_3": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 16,
+          "fp": 0,
+          "fn": 0
+        },
+        "G_4": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 13,
+          "fp": 0,
+          "fn": 0
+        },
+        "G_5": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 10,
+          "fp": 0,
+          "fn": 0
+        }
+      }
+    },
+    "emergency_safety": {
+      "name": "emergency_safety",
+      "overall": {
+        "precision": 0.8,
+        "recall": 1.0,
+        "f1": 0.888888888888889,
+        "tp": 4,
+        "fp": 1,
+        "fn": 0
+      },
+      "by_group": {
+        "keyword": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0
+        },
+        "calm": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "urgent_miss_count": 0,
+      "urgent_miss_scenarios": []
+    }
+  },
+  "judge": {
+    "name": "naturalness_judge",
+    "status": "skipped"
+  },
+  "wer": {
+    "name": "wer",
+    "status": "pending"
+  },
+  "scenarios": [
+    {
+      "id": "adv_calm_emergency",
+      "tier": "critical",
+      "passed": true
+    },
+    {
+      "id": "adv_readback_deny",
+      "tier": "critical",
+      "passed": true
+    },
+    {
+      "id": "adv_hangup_midway",
+      "tier": "critical",
+      "passed": true
+    },
+    {
+      "id": "adv_correction_midcall",
+      "tier": "quality",
+      "passed": true
+    },
+    {
+      "id": "adv_identity_bare_no_overfire",
+      "tier": "quality",
+      "passed": true
+    },
+    {
+      "id": "adv_oos_midcall",
+      "tier": "quality",
+      "passed": true
+    },
+    {
+      "id": "adv_ambiguous_first_turn",
+      "tier": "quality",
+      "passed": true
+    },
+    {
+      "id": "adv_missing_no_reask",
+      "tier": "quality",
+      "passed": true
+    },
+    {
+      "id": "adv_garbled_repeat",
+      "tier": "critical",
+      "passed": true
+    },
+    {
+      "id": "adv_stuck_offer_human",
+      "tier": "critical",
+      "passed": true
+    },
+    {
+      "id": "emg_keyword_accident",
+      "tier": "critical",
+      "passed": true
+    },
+    {
+      "id": "emg_keyword_fire",
+      "tier": "critical",
+      "passed": true
+    },
+    {
+      "id": "emg_calm_flag_no_keyword",
+      "tier": "critical",
+      "passed": true
+    },
+    {
+      "id": "emg_falsepos_keyword_casual",
+      "tier": "quality",
+      "passed": true
+    },
+    {
+      "id": "g1_rescue_basic",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g1_rescue_flat_tire",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g2_warranty_basic",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g2_warranty_taxi",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g3_order_basic",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g3_order_business",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g4_motorbike_basic",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g4_motorbike_vento",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g5_remote_tech_basic",
+      "tier": "happy",
+      "passed": true
+    },
+    {
+      "id": "g5_remote_tech_app",
+      "tier": "happy",
+      "passed": true
+    }
+  ]
+}

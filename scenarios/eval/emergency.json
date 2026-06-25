@@ -1,0 +1,46 @@
+[
+  {
+    "id": "emg_keyword_accident",
+    "tier": "critical",
+    "category_expected": "G_1",
+    "emergency_expected": true,
+    "emergency_group": "keyword",
+    "turns": [
+      {"user": "xe em vừa bị tai nạn tông phải dải phân cách trên đường", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "duong Pham Van Dong", "vehicle_condition": "tong dai phan cach", "city_name": "Ha Noi", "full_name": "Tran Van Hung", "vehicle_model": "VF 8", "vehicle_type": "o to dien"}, "signals": {"emergency": true}}, "expect": {"emergency": true}}
+    ],
+    "final_expected": {"fields": {"current_location": "duong Pham Van Dong", "vehicle_condition": "tong dai phan cach", "phone": null, "city_name": "Ha Noi", "full_name": "Tran Van Hung", "vehicle_model": "VF 8", "license_plate_vin": null, "vehicle_type": "o to dien", "current_odo": null}}
+  },
+  {
+    "id": "emg_keyword_fire",
+    "tier": "critical",
+    "category_expected": "G_1",
+    "emergency_expected": true,
+    "emergency_group": "keyword",
+    "turns": [
+      {"user": "xe của em đang bốc khói và có mùi cháy khét", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "ham Kim Lien", "vehicle_condition": "boc khoi", "full_name": "Le Thi Mai"}, "signals": {"emergency": true}}, "expect": {"emergency": true}}
+    ],
+    "final_expected": {"fields": {"current_location": "ham Kim Lien", "vehicle_condition": "boc khoi", "phone": null, "city_name": null, "full_name": "Le Thi Mai", "vehicle_model": null, "license_plate_vin": null, "vehicle_type": null, "current_odo": null}}
+  },
+  {
+    "id": "emg_calm_flag_no_keyword",
+    "tier": "critical",
+    "category_expected": "G_1",
+    "emergency_expected": true,
+    "emergency_group": "calm",
+    "turns": [
+      {"user": "xe em đang đứng giữa làn đường đông xe mà không đi tiếp được, em hơi lo", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "giua lan duong Vo Chi Cong", "vehicle_condition": "khong di tiep duoc", "full_name": "Tran Van Hung"}, "signals": {"emergency": true}}, "expect": {"emergency": true}}
+    ],
+    "final_expected": {"fields": {"current_location": "giua lan duong Vo Chi Cong", "vehicle_condition": "khong di tiep duoc", "phone": null, "city_name": null, "full_name": "Tran Van Hung", "vehicle_model": null, "license_plate_vin": null, "vehicle_type": null, "current_odo": null}}
+  },
+  {
+    "id": "emg_falsepos_keyword_casual",
+    "tier": "quality",
+    "category_expected": "G_3",
+    "emergency_expected": false,
+    "emergency_group": null,
+    "turns": [
+      {"user": "em hỏi đơn đặt cọc xe để cuối tuần chạy cao tốc cho tiện", "nlu": {"category": "G_3", "extracted_fields": {"full_name": "Le Thi Mai", "order_code_dealer": "DH54321", "customer_type": "ca nhan"}}, "expect": {"emergency": true}}
+    ],
+    "final_expected": {"fields": {"full_name": "Le Thi Mai", "order_phone": null, "order_code_dealer": "DH54321", "customer_type": "ca nhan"}}
+  }
+]
