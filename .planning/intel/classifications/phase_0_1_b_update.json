@@ -1,0 +1,35 @@
+{
+  "filepath": "D:/Task4/AI-Callbot-Vinfast/docs/PHASE_0_1_B_UPDATE.md",
+  "type": "DOC",
+  "precedence": 6,
+  "manifest_override": true,
+  "title": "Person B Update: Phase 0-1",
+  "scope": "Progress summary for Track B (Person B) covering Phase 0 Wave 0 and Phase 1 Wave 1 deliverables. Documents completed B-side foundations including audio scaffolding, Vietnamese normalization, ASR wrapper, mic capture/VAD, and scenario corpus.",
+  "cross_refs": [
+    "docs/ARCHITECTURE.md",
+    "PLAN.md",
+    "src/callbot/normalization/vietnamese_numbers.py",
+    "src/callbot/asr/faster_whisper_asr.py",
+    "src/callbot/audio/vad.py",
+    "src/callbot/audio/recorder.py",
+    "src/callbot/audio/playback.py",
+    "src/callbot/models/schemas.py",
+    "tests/test_normalization.py"
+  ],
+  "key_decisions": [
+    "Short pauses in numeric fields are tolerated so multi-part plate inputs (e.g. '30F' and '1234') are treated as one input",
+    "Phase 2 can build on Phase 1 interfaces without changing the public API",
+    "Gate 0 B-side dependencies are complete; full gate also depends on A-side dialogue work"
+  ],
+  "completed_items": [
+    "Phase 0 / Wave 0 / Gate 0: B-side architecture write-up added to docs/ARCHITECTURE.md",
+    "Phase 0 / Wave 0 / Gate 0: Frozen schema plate/phone validation support for B normalization flow",
+    "Phase 0 / Wave 0 / Gate 0: Audio scaffolding filled with import-safe implementations (faster_whisper_asr.py, recorder.py, vad.py, playback.py)",
+    "Phase 1 / Wave 1 / Gate 1 - B10: Vietnamese normalization with unit tests",
+    "Phase 1 / Wave 1 / Gate 1 - B11: ASR wrapper with file-mode support",
+    "Phase 1 / Wave 1 / Gate 1 - B12: Microphone capture + VAD",
+    "Phase 1 / Wave 1 / Gate 1 - B13: Scenario corpus for G_1 through G_5 plus exception cases",
+    "Phase 1 / Wave 1 / Gate 1 - B14: Audio fixture support for WER evaluation readiness",
+    "Verification: 17 pytest tests passed, JSON fixtures in scenarios/ parse successfully, import check for audio/normalization modules succeeded"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "filepath": "D:/Task4/AI-Callbot-Vinfast/WORKFLOW.md",
+  "type": "DOC",
+  "precedence": 4,
+  "manifest_override": true,
+  "title": "WORKFLOW — Quy trình phối hợp 2 người",
+  "scope": "Defines the two-person collaboration workflow (Track A / Track B) for the VinFast Callbot project, covering file ownership rules, Wave 0 sequential setup, Wave 1-2 parallel development, shared-file policies, branch/PR cadence, conflict resolution, and secret safety.",
+  "cross_refs": [
+    "PLAN.md",
+    "TASKGRAPH.md",
+    "BLUEPRINT.md"
+  ],
+  "key_decisions": [
+    "Each file has exactly one owner; touching another person's file requires notifying them first.",
+    "Wave 0 tasks (TASK-001 scaffold, TASK-002 schemas, TASK-003 interfaces) must run sequentially, not in parallel, because they all touch shared files.",
+    "models/schemas.py and all */base.py are frozen after TASK-003; signature changes require both tracks to agree and immediately pull.",
+    "pipeline.py is owned by Track B and reviewed by Track A; B must not write it until TASK-A13 (engine) has merged to main.",
+    "requirements.txt is append-only and alphabetically ordered; conflicts are resolved by union (keep both lines).",
+    "Branch protection on main enforced; no direct pushes, all changes via PR with cross-review.",
+    "PRs must not stay open more than one day; both tracks must end each day on a green main.",
+    ".env and *.onnx and scenarios/audio/*.wav must never be committed (enforced via .gitignore from TASK-001)."
+  ]
+}

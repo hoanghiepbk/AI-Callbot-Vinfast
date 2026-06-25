@@ -1,0 +1,49 @@
+{
+  "source_path": "D:/Task4/AI-Callbot-Vinfast/TECHSTACK.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "VinFast Callbot — Tech Stack Tối Ưu (Bản Hợp Nhất)",
+  "summary": "Consolidated architecture decision record locking all technology choices for the VinFast callbot: Python 3.11, LangGraph StateGraph, PhoWhisper-CT2 ASR, Ollama+Qwen LLM, Piper TTS, and Vietnamese entity normalization as the core differentiator.",
+  "scope": [
+    "DialogueEngine",
+    "LangGraph StateGraph",
+    "PhoWhisper-CT2",
+    "faster-whisper",
+    "silero-vad",
+    "Ollama",
+    "Qwen LLM",
+    "Piper TTS",
+    "normalization/vietnamese_numbers.py",
+    "sounddevice",
+    "Gradio",
+    "Pydantic v2",
+    "evaluation framework",
+    "CallState",
+    "SlotState",
+    "pipeline.py"
+  ],
+  "cross_refs": [
+    "PLAN.md",
+    "BLUEPRINT.md"
+  ],
+  "key_decisions": [
+    "Architecture philosophy: Thin LLM + Thick State Machine — LLM handles only NLU/NLG; deterministic FSM (LangGraph) owns all slot state and field-selection logic",
+    "Dialogue runtime: LangGraph StateGraph chosen over hand-rolled FSM for native routing, checkpointing/interrupt, and alignment with VinSmart/XeCare stack",
+    "ASR: PhoWhisper-medium CT2 int8 as default (best Vietnamese WER on CPU); generic faster-whisper as fallback; large model on GPU for offline WER eval only",
+    "LLM: Qwen 7-8B via Ollama (Windows-native, OpenAI-compatible API, keep_alive for no cold-load); A/B with one Vietnamese-tuned variant doubles as ablation eval",
+    "TTS: Piper local ONNX as primary (reproducible offline, safe +5pts); interface pluggable via tts/base.py to allow edge-tts for video demo and viXTTS for GPU premium clip",
+    "Audio I/O: sounddevice + numpy over PyAudio (fewer Windows build issues, numpy-native buffers)",
+    "Vietnamese entity normalization: dedicated normalization/ module with per-field typed normalization post-LLM-extraction; parse_failed flag triggers exception #5 garbled readback",
+    "Structured output: Pydantic v2 + Ollama JSON/format mode (no instructor or outlines dependency)",
+    "Response strategy: template-first (deterministic, 2-3 variants); LLM called only for high-variance turns (emergency comfort, ambiguity, out-of-scope, closing)",
+    "Eval stack: pytest + confusion matrix + slot F1 + jiwer WER + LLM-as-judge (JUDGE_MODEL via .env, dev-time only) + latency p50/p95 + ablation study",
+    "Frontend: CLI for dev/eval iteration + Gradio for signature video demo",
+    "Secrets: python-dotenv + .env only; never hardcoded; .env.example documents required keys",
+    "No RAG for G_2/G_4 policy — static policy, time spent on eval instead",
+    "Hardware split: Zenbook CPU for live demo; GPU PC for offline WER eval and premium TTS clip only"
+  ],
+  "locked": true,
+  "precedence": 1,
+  "notes": ""
+}

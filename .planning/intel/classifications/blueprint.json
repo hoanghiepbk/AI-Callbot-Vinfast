@@ -1,0 +1,46 @@
+{
+  "source_path": "D:/Task4/AI-Callbot-Vinfast/BLUEPRINT.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "BLUEPRINT: VinFast Callbot",
+  "summary": "Locked architectural blueprint for the VinFast Vietnamese customer-service callbot, documenting 12 accepted design decisions covering ASR, normalization, LangGraph orchestration, data contracts, and cross-track interface seams.",
+  "scope": [
+    "DialogueEngine",
+    "LangGraph StateGraph",
+    "CallState",
+    "models/schemas.py",
+    "ASR",
+    "TTS",
+    "Normalizer",
+    "pipeline.py",
+    "normalization",
+    "dialogue nodes",
+    "exception handling",
+    "post-call track",
+    "evaluation"
+  ],
+  "cross_refs": [
+    "TECHSTACK.md",
+    "PLAN.md",
+    "TASKGRAPH.md",
+    "intern_task3_callbot_brief.pdf"
+  ],
+  "locked": true,
+  "precedence": 0,
+  "key_decisions": [
+    "D1: PhoWhisper-CT2 first, generic faster-whisper fallback",
+    "D2: Normalize per field-type, after LLM extraction (not pre-LLM whole-utterance)",
+    "D3: Garbled exception #5 triggered by validator parse_failed, not ASR confidence",
+    "D4: I/O timeout/disconnect hangup (#8) routes to engine.finalize() from pipeline",
+    "D5: Collect >= 5 real Vietnamese audio clips for WER evaluation (Track B owns)",
+    "D6: Keep current track split — Track A solo on critical path",
+    "D7: LLM judge uses strongest available cloud model at dev-time only, documented",
+    "D8: Setup scripts pull models; pin minimum hardware requirements",
+    "D9: Define allowed value sets for classification fields (vehicle_type, vehicle_usage_type, customer_type)",
+    "D10: Always readback phone/plate/VIN (READBACK_REQUIRED) before confirming",
+    "D11: Report E2E latency per turn plus per-component breakdown",
+    "D12: Use LangGraph StateGraph for multi-intent routing and checkpointing"
+  ],
+  "notes": ""
+}

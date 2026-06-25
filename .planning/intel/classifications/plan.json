@@ -1,0 +1,70 @@
+{
+  "source_path": "D:/Task4/AI-Callbot-Vinfast/PLAN.md",
+  "type": "PRD",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "VinFast Callbot — Kế Hoạch Thi Công Chi Tiết (Bản Hợp Nhất)",
+  "summary": "Four-phase, two-week construction plan for a Vietnamese-language voice callbot covering architecture, dialogue core, exception handling, voice I/O, evaluation, and demo deliverables.",
+  "scope": [
+    "DialogueEngine",
+    "LangGraph state machine",
+    "Vietnamese entity normalization",
+    "ASR (faster-whisper / PhoWhisper)",
+    "VAD (silero-vad)",
+    "TTS (Piper local ONNX)",
+    "Gradio demo UI",
+    "evaluation framework",
+    "Pydantic schemas",
+    "pipeline.py",
+    "Track A / Track B split",
+    "Git workflow"
+  ],
+  "cross_refs": [
+    "TECHSTACK.md",
+    "BLUEPRINT.md",
+    "TASKGRAPH.md"
+  ],
+  "locked": false,
+  "precedence": 2,
+  "phases": [
+    {
+      "id": "Phase 0",
+      "name": "Nền tảng & Kiến trúc",
+      "days": "1–3",
+      "gate": "Gate 0: mic→transcript OK · Ollama Vietnamese OK · asr_latency_ms measured · 5-category schema locked · Architecture Doc drafted · ≥1 scenario/category"
+    },
+    {
+      "id": "Phase 1",
+      "name": "Lõi Hội Thoại (text mode)",
+      "days": "4–7",
+      "gate": "Gate 1: all 5 categories complete happy-path text mode · final JSON matches schema · normalization tests pass · ≥1 golden case/category in harness"
+    },
+    {
+      "id": "Phase 2",
+      "name": "Exception Handling & Voice I/O",
+      "days": "8–10",
+      "gate": "Gate 2: 8 exception scenarios demo-able · live mic→ASR→engine→response end-to-end · TTS producing Vietnamese · Gradio running"
+    },
+    {
+      "id": "Phase 3",
+      "name": "Evaluation, Signature Demo & Report",
+      "days": "11–14",
+      "gate": "Gate 3: 5 deliverables complete · ≥10 golden scenarios + ≥3 exception · latency report · failure analysis · pip install clean · no secret leak · demo video recorded"
+    }
+  ],
+  "key_decisions": [
+    "Architecture Doc is Gate 0 — no code before design is locked",
+    "Text-first development: dialogue core runs and tests in text mode before voice I/O is added",
+    "DialogueEngine.process(text) → (reply, SlotState) is the frozen cross-track contract set in Phase 0",
+    "models/schemas.py and all */base.py interfaces are frozen after Phase 0; signature changes require both tracks to sync and pull immediately",
+    "State machine (LangGraph) handles slot lifecycle — LLM does NOT hold conversation state",
+    "Piper local ONNX is primary TTS for reproducibility; edge-tts only for demo video swap",
+    "No RAG — static warranty policy (G_2/G_4) keeps complexity low and frees time for eval",
+    "LangGraph graph capped at ≤7 nodes; no subgraph per category",
+    "Evaluation investment: slot F1 + WER (jiwer) + routing confusion matrix + latency p50/p95 + ablation study + failure analysis",
+    "requirements.txt is append-only with == pinning; conflict resolution is union of both tracks",
+    "pipeline.py owned by Track B (Phuong) as integration seam; Track A reviews only",
+    "8 exception strategies: missing · correction · ambiguous · out-of-scope · garbled · emergency · stuck-2+ · hangup"
+  ],
+  "notes": "MANIFEST_TYPE=PRD used; document is a construction/execution plan with phased delivery gates and team coordination rules rather than a pure user-requirements document, but PRD classification is authoritative per manifest."
+}
