@@ -1,12 +1,43 @@
-# Pinned versions verified by a clean-venv install on this machine.
-# Target runtime: Python 3.11 (TECHSTACK §3); these versions also ship 3.11 wheels.
-# Append-only, keep alphabetical (WORKFLOW §5). Canonical install = `pip install -e .`
-# (pyproject [project.dependencies]); this file is kept in sync for plain pip users.
-faster-whisper==1.2.1
+# Contract-layer deps — Phase 1. Append-only, alphabetical, == pins (WORKFLOW §5).
+# Heavy deps (faster-whisper, silero-vad, sounddevice, numpy, ollama) added in Phase 2.
+annotated-types==0.7.0
+anyio==4.14.1
+certifi==2026.6.17
+charset-normalizer==3.4.7
+colorama==0.4.6
+distro==1.9.0
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.18
+iniconfig==2.3.0
+jsonpatch==1.33
+jsonpointer==3.1.1
 langchain-core==1.4.8
+langchain-protocol==0.0.18
 langgraph==1.2.6
-numpy==2.5.0
-ollama==0.6.2
+langgraph-checkpoint==4.1.1
+langgraph-prebuilt==1.1.0
+langgraph-sdk==0.4.2
+langsmith==0.9.1
+orjson==3.11.9
+ormsgpack==1.12.2
+packaging==26.2
+pluggy==1.6.0
 pydantic==2.13.4
-silero-vad==6.2.1
-sounddevice==0.5.5
+pydantic-core==2.46.4
+pygments==2.20.0
+pytest==9.1.1
+python-dotenv==1.2.2
+pyyaml==6.0.3
+requests==2.34.2
+requests-toolbelt==1.0.0
+sniffio==1.3.1
+tenacity==9.1.4
+typing-extensions==4.15.0
+typing-inspection==0.4.2
+urllib3==2.7.0
+uuid-utils==0.16.2
+websockets==15.0.1
+xxhash==3.7.1
+zstandard==0.25.0
