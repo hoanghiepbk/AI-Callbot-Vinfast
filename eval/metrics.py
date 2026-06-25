@@ -83,5 +83,47 @@ def slot_f1_metric(results: Sequence[ScenarioResult]) -> dict:
     }
 
 
-# Pluggable registry — A30 appends emergency-recall / latency / judge metrics here.
-DEFAULT_METRICS = [routing_metric, slot_f1_metric]
+def emergency_metric(results: Sequence[ScenarioResult]) -> dict:
+    """Safety metric (A30): emergency recall + precision, split keyword vs calm, plus the
+    urgent-miss count.
+
+    recall  = fired / true-emergency        (an empty / not-fired emergency == MISS)
+    precision = correct-fire / all-fired    (exposes the keyword-OR false-positive rate)
+
+    HONEST NOTE for the report: in scripted mode the per-turn NLU (incl. signals.emergency)
+    is fixed by the golden, so these numbers validate ENGINE wiring + the keyword backstop,
+    NOT live LLM detection. The real recall — especially for the 'calm' group, where only
+    the LLM flag (no keyword) can fire it — must be read from `run_eval --ollama`.
+    """
+
+    def prf(items: Sequence[ScenarioResult]) -> dict:
+        tp = sum(1 for r in items if r.emergency_expected and r.emergency_predicted)
+        fn = sum(1 for r in items if r.emergency_expected and not r.emergency_predicted)
+        fp = sum(1 for r in items if not r.emergency_expected and r.emergency_predicted)
+        return _prf(tp, fp, fn)
+
+    by_group = {
+        group: prf([r for r in results if r.emergency_expected and r.emergency_group == group])
+        for group in ("keyword", "calm")
+    }
+    # urgent-miss: caller sentiment read as 'urgent' post-call but emergency never fired
+    # in-call (post_call.detect_missed_emergency signature). Scripted sentiment is fixed
+    # 'calm', so this is a real-mode (--ollama) signal.
+    urgent_miss = [
+        r.id
+        for r in results
+        if (r.sentiment_predicted or "").strip().lower() == "urgent" and not r.emergency_predicted
+    ]
+    return {
+        "name": "emergency_safety",
+        "overall": prf(results),
+        "by_group": by_group,
+        "urgent_miss_count": len(urgent_miss),
+        "urgent_miss_scenarios": urgent_miss,
+    }
+
+
+# Pluggable registry — A30 appends emergency-safety / judge metrics here. Latency + WER are
+# NOT pure functions of ScenarioResult (they need a live pipeline run / audio), so they live
+# in eval/latency.py + eval/wer.py and are invoked directly by run_eval, not via this list.
+DEFAULT_METRICS = [routing_metric, slot_f1_metric, emergency_metric]

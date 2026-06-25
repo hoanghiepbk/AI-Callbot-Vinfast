@@ -3,6 +3,8 @@
     "id": "adv_calm_emergency",
     "tier": "critical",
     "category_expected": "G_1",
+    "emergency_expected": true,
+    "emergency_group": "calm",
     "turns": [
       {"user": "anh ơi xe em đỗ giữa cao tốc không nổ được", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "cao toc Ha Noi Hai Phong", "vehicle_condition": "khong no may"}, "signals": {"emergency": true}}, "expect": {"emergency": true}},
       {"user": "số em 0901234567", "nlu": {"extracted_fields": {"phone": "0901234567"}}, "expect": {"slot_status": {"phone": "confirmed"}}},

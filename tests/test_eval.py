@@ -85,4 +85,8 @@ def test_golden_routes_perfectly_and_high_slot_f1():
 def test_metrics_registry_is_pluggable():
     results = run_all()
     computed = [fn(results) for fn in DEFAULT_METRICS]  # A30 just appends to this list
-    assert {m["name"] for m in computed} == {"routing_accuracy", "slot_filling_f1"}
+    assert {m["name"] for m in computed} == {
+        "routing_accuracy",
+        "slot_filling_f1",
+        "emergency_safety",
+    }

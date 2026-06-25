@@ -74,6 +74,14 @@ class ScenarioResult:
     fields_predicted: dict[str, str | None]
     turn_failures: list[TurnFailure] = field(default_factory=list)
     done: bool = False
+    # A30 additive carriers — defaults keep older constructors (tests) working. The
+    # emergency/sentiment/replies data lets the registry metrics stay pure functions of
+    # ScenarioResult without re-running the engine.
+    emergency_expected: bool = False
+    emergency_predicted: bool = False
+    emergency_group: str | None = None  # "keyword" | "calm" | None (ground-truth label)
+    sentiment_predicted: str | None = None  # post-call sentiment (urgent-miss signal)
+    replies: list[str] = field(default_factory=list)  # bot reply per turn (judge input)
 
     @property
     def passed(self) -> bool:
@@ -136,9 +144,11 @@ def run_scenario(scenario: dict[str, Any], llm: Any | None = None) -> ScenarioRe
     engine = DialogueEngine(llm, VietnameseNormalizer())
 
     turn_failures: list[TurnFailure] = []
+    replies: list[str] = []
     last: Any = None
     for i, turn in enumerate(scenario["turns"]):
         last = engine.process(turn["user"])
+        replies.append(last.reply)
         if "expect" in turn:
             for detail in _check_turn(turn["expect"], last.state, last.reply):
                 turn_failures.append(TurnFailure(i, detail))
@@ -153,6 +163,11 @@ def run_scenario(scenario: dict[str, Any], llm: Any | None = None) -> ScenarioRe
         fields_predicted=final.fields,
         turn_failures=turn_failures,
         done=bool(last.done) if last is not None else False,
+        emergency_expected=bool(scenario.get("emergency_expected", False)),
+        emergency_predicted=final.post_call.emergency == "yes",
+        emergency_group=scenario.get("emergency_group"),
+        sentiment_predicted=final.post_call.sentimental_analysis,
+        replies=replies,
     )
 
 
