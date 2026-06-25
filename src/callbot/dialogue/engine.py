@@ -1,8 +1,6 @@
-"""DialogueEngine: public seam (process/finalize/reset) over the graph.
-
-Skeleton only — the turn loop is Wave 1 (TASK-A13). The seam signature is FROZEN
-per BLUEPRINT §3 and must not change (it is the Track A<->B boundary).
-"""
+# FROZEN CONTRACT — TASK-003 Wave 0.
+"""DialogueEngine: public seam between Track A and Track B. Frozen at Wave 0.
+Changes require both tracks to agree (WORKFLOW §5)."""
 
 from __future__ import annotations
 
@@ -24,13 +22,14 @@ class TurnResult(BaseModel):
 
 
 class DialogueEngine:
-    def __init__(self, llm: "LLM", normalizer: "Normalizer") -> None: ...
+    def __init__(self, llm: "LLM", normalizer: "Normalizer") -> None:
+        raise NotImplementedError("Track A implements this")
 
     def process(self, user_text: str) -> TurnResult:  # one turn
-        raise NotImplementedError  # Wave 1 (TASK-A13)
+        raise NotImplementedError("Track A implements this")
 
     def finalize(self) -> FinalOutput:  # assemble final JSON (also on hangup)
-        raise NotImplementedError  # Wave 1 (TASK-A13)
+        raise NotImplementedError("Track A implements this")
 
     def reset(self) -> None:  # new call
-        raise NotImplementedError  # Wave 1 (TASK-A13)
+        raise NotImplementedError("Track A implements this")
