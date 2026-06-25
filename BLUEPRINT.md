@@ -47,7 +47,7 @@
 process(user_text):                          # = một lượt traversal trên LangGraph StateGraph
   1. nlu = nlu_node(user_text, category)      # LLM: category + extracted_fields(raw) + corrected + signals
   2. apply_signals(nlu.signals):              # node deterministic
-       emergency (cờ_LLM OR keyword OR sentiment=="urgent") → flag + đẩy hotline + hạ ưu tiên field thấp + hoãn readback   (#6)
+       emergency (cờ_LLM OR keyword) → flag + đẩy hotline + hạ ưu tiên field thấp + hoãn readback   (#6)
        out_of_scope → redirect / transfer human                      (#4)
        correction → đánh dấu corrected_fields                        (#2)
        hangup (verbal: "thôi/để sau") → chào lịch sự 1 câu → finalize() partial  (#8 verbal)
@@ -74,7 +74,7 @@ process(user_text):                          # = một lượt traversal trên L
 
 > **Bất biến:** bước 2,3,5,6,7 + vòng 4 là **deterministic Python trong node**; LLM chỉ ở `nlu_node`, và `response_node` **chỉ gọi LLM cho lượt high-variance** (template-first — xem §1A). Bot vẫn gradeable & test được (25đ).
 
-> **Emergency = OR 3 nguồn (#6, hybrid):** `cờ_LLM OR keyword OR sentiment=="urgent"`. Keyword list (tai nạn / cháy / kẹt cao tốc / mất phanh…) nằm **trong code có test**, KHÔNG trong prompt. Chỉ `sentiment=="urgent"` mới trigger (frustrated ≠ emergency) → tránh false-positive làm hỏng metric emergency-recall.
+> **Emergency real-time = `cờ_LLM OR keyword` (#6, hybrid, per-turn).** Keyword list (tai nạn / cháy / kẹt cao tốc / mất phanh…) nằm **trong code có test**, KHÔNG trong prompt. `sentiment=="urgent"` **KHÔNG** phải trigger live — nó là **cross-check post-call** (A14): nếu sentiment=urgent mà emergency chưa từng bật trong call → đặt cờ `possible_missed_emergency` để A30 đo tỉ lệ miss, KHÔNG bật ngược emergency (sentiment đến quá muộn, không đủ bằng chứng). Tách vậy để emergency-recall đo theo quyết định real-time, không nhiễu vì hậu kiểm.
 
 > **Emergency THẮNG Readback (#6 > D10):** trong ca khẩn cấp → cấp hotline + thu *tối thiểu để điều xe* (vị trí, số gọi lại), **KHÔNG** chèn readback rườm rà; readback field định danh (phone/plate/VIN) để *sau* khi đã trấn an / điều xe. Lý do: tốc độ > độ chính xác hoàn hảo một field trong ca nguy hiểm.
 
