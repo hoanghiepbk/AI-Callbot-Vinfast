@@ -1,1 +1,34 @@
-"""Environment/config loading from .env."""
+"""Environment/config loading from .env.
+
+Stdlib-only loader (no python-dotenv dependency): reads KEY=value lines from a
+`.env` at the project root into os.environ, without overriding vars already set
+in the real environment. Only the keys A10 needs are exposed as constants.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+# Project root = two levels up from src/callbot/config.py.
+_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+
+
+def _load_env_file(path: Path) -> None:
+    """Populate os.environ from a .env file. Real environment vars take precedence."""
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, _, value = stripped.partition("=")
+        key, value = key.strip(), value.strip()
+        if key:
+            os.environ.setdefault(key, value)
+
+
+_load_env_file(_ENV_PATH)
+
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+LLM_MODEL = os.environ.get("LLM_MODEL", "qwen3:8b")
