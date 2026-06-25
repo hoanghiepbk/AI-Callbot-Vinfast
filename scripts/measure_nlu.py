@@ -21,63 +21,24 @@ from pathlib import Path
 import ollama
 from pydantic import ValidationError
 
-# Import the frozen contract just for validation (read-only use).
+# Import the frozen contract just for validation (read-only use) + the real product
+# NLU prompt/node, so this harness measures exactly what ships (not a separate prompt).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from callbot.dialogue.extraction import build_system  # noqa: E402
+from callbot.llm.ollama_client import OllamaClient  # noqa: E402
 from callbot.models.schemas import NLUResult  # noqa: E402
 
 MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
 HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 RUNS = 3
 
-SYSTEM = """Bạn là bộ NLU cho callbot chăm sóc khách hàng VinFast.
-Với MỘT câu khách nói, trả về JSON đúng schema NLUResult. CHỈ trả JSON, không giải thích.
-
-category (chọn 1, hoặc null nếu chưa đủ rõ):
-  G_1 Cứu hộ ô tô (xe hỏng/tai nạn/kẹt đường cần cứu hộ, cẩu kéo)
-  G_2 Bảo hành & sửa chữa ô tô
-  G_3 Đơn hàng (trạng thái đơn, đặt cọc, đại lý)
-  G_4 Xe máy điện - bảo hành
-  G_5 Hỗ trợ kỹ thuật từ xa (lỗi phần mềm / app / màn hình)
-
-signals:
-  emergency=true nếu nguy hiểm tính mạng / kẹt giữa đường hoặc cao tốc / tai nạn / cháy
-    (BẮT cả khi khách nói giọng bình tĩnh).
-  out_of_scope=true nếu hỏi ngoài phạm vi CSKH xe (giờ mở cửa, thời tiết...).
-  correction=true nếu khách sửa lại thông tin vừa nói.
-  hangup=true nếu khách muốn dừng/cúp máy ("thôi", "để sau").
-
-extracted_fields: chỉ field khách VỪA cung cấp trong câu này, tên field đúng brief
-  (full_name, phone, license_plate_vin, current_location, vehicle_model, vehicle_line, ...)."""
-
-FEWSHOT = [
-    {
-        "role": "user",
-        "content": "xe em chết máy giữa cao tốc Hà Nội Hải Phòng không nổ được",
-    },
-    {
-        "role": "assistant",
-        "content": json.dumps(
-            {
-                "category": "G_1",
-                "extracted_fields": {"current_location": "cao tốc Hà Nội Hải Phòng"},
-                "corrected_fields": {},
-                "signals": {
-                    "emergency": True,
-                    "out_of_scope": False,
-                    "correction": False,
-                    "hangup": False,
-                },
-            },
-            ensure_ascii=False,
-        ),
-    },
-]
-
 # Each case: text + expected category (or None) + expected signals it MUST get right.
 CASES: list[dict[str, object]] = [
     {
         "text": "số em là không chín ba tám hai một không năm bảy sáu",
-        "cat": "G_3",
+        # Bare phone, no context -> null per the A12 policy (don't guess category from an
+        # identifier alone). In a real call the phone is captured inside a locked category.
+        "cat": None,
         "emergency": False,
     },
     {
@@ -119,15 +80,16 @@ CASES: list[dict[str, object]] = [
 def main() -> int:
     # Windows console defaults to cp1252; we print Vietnamese, so force UTF-8.
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-    client = ollama.Client(host=HOST)
+    client = OllamaClient()  # product client: applies think=False because we pass a schema
     try:
-        client.list()
+        ollama.Client(host=HOST).list()  # reachability probe
     except Exception as exc:  # noqa: BLE001 - spike: any failure means "no server"
         print(f"[BLOCKED] Ollama not reachable at {HOST}: {exc}")
         print("Start Ollama and pull the model, then re-run. See README Setup.")
         return 1
 
     schema = NLUResult.model_json_schema()
+    system = build_system(None)  # the real product NLU prompt (balanced few-shot)
     n_attempts = 0
     n_parse = n_schema = n_cat = n_sig = 0
     emg_total = emg_hit = 0
@@ -139,23 +101,9 @@ def main() -> int:
         cats_seen: list[str] = []
         for run in range(RUNS):
             n_attempts += 1
-            try:
-                resp = client.chat(
-                    model=MODEL,
-                    messages=[
-                        {"role": "system", "content": SYSTEM},
-                        *FEWSHOT,
-                        {"role": "user", "content": text},
-                    ],
-                    format=schema,
-                    think=False,  # A10 fix: thinking OFF for structured (kills empty output)
-                    options={"temperature": 0},
-                    keep_alive="10m",
-                )
-                raw = resp["message"]["content"]
-            except Exception as exc:  # noqa: BLE001
-                wrong.append(f"[call-fail] {text!r}: {exc}")
-                continue
+            # Route through the product node's client: think=False + retry are applied
+            # inside OllamaClient. Empty after retries comes back as "" -> counted no-json.
+            raw = client.complete(system, text, schema).text
 
             try:
                 data = json.loads(raw)
