@@ -4,125 +4,146 @@
     "tier": "happy",
     "category_expected": "G_1",
     "turns": [
-      {"user": "em cần cứu hộ ô tô gấp", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "duong Le Loi", "vehicle_condition": "den bao loi dong co", "city_name": "Ha Noi", "full_name": "Tran Van Hung", "vehicle_model": "VF 8", "vehicle_type": "o to dien", "current_odo": "12000"}}, "expect": {"asks_field": "phone"}},
-      {"user": "số em 0901234567", "nlu": {"extracted_fields": {"phone": "0901234567"}}, "expect": {"slot_status": {"phone": "pending"}}},
-      {"user": "đúng rồi", "expect": {"asks_field": "license_plate_vin", "slot_status": {"phone": "confirmed"}}},
-      {"user": "biển 30A-12345", "nlu": {"extracted_fields": {"license_plate_vin": "30A-12345"}}},
-      {"user": "chính xác", "expect": {"done": true, "slot_status": {"license_plate_vin": "confirmed"}}}
+      {"user": "em muốn đặt cứu hộ kéo xe ô tô, xe đang ở đường Lê Lợi", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "đường Lê Lợi"}}, "expect": {"emergency": false}},
+      {"user": "xe bị xịt lốp, em ở thành phố Hà Nội", "nlu": {"extracted_fields": {"vehicle_condition": "bị xịt lốp", "city_name": "thành phố Hà Nội"}}},
+      {"user": "em tên Trần Văn Hùng, số điện thoại 0901234567", "nlu": {"extracted_fields": {"full_name": "Trần Văn Hùng", "phone": "0901234567"}}, "expect": {"slot_status": {"phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"phone": "confirmed"}}},
+      {"user": "xe VF 8, là ô tô điện", "nlu": {"extracted_fields": {"vehicle_model": "VF 8", "vehicle_type": "ô tô điện"}}},
+      {"user": "biển số 30A-12345", "nlu": {"extracted_fields": {"license_plate_vin": "30A-12345"}}, "expect": {"slot_status": {"license_plate_vin": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"license_plate_vin": "confirmed"}}},
+      {"user": "xe đã đi 12000 km", "nlu": {"extracted_fields": {"current_odo": "12000"}}, "expect": {"done": true}}
     ],
-    "final_expected": {"fields": {"current_location": "duong Le Loi", "vehicle_condition": "den bao loi dong co", "phone": "0901234567", "city_name": "Ha Noi", "full_name": "Tran Van Hung", "vehicle_model": "VF 8", "license_plate_vin": "30A-12345", "vehicle_type": "o to dien", "current_odo": "12000"}}
+    "final_expected": {"fields": {"current_location": "đường Lê Lợi", "vehicle_condition": "bị xịt lốp", "phone": "0901234567", "city_name": "thành phố Hà Nội", "full_name": "Trần Văn Hùng", "vehicle_model": "VF 8", "license_plate_vin": "30A-12345", "vehicle_type": "ô tô điện", "current_odo": "12000"}}
   },
   {
     "id": "g1_rescue_flat_tire",
     "tier": "happy",
     "category_expected": "G_1",
     "turns": [
-      {"user": "ô tô của chị bị hỏng cần kéo về", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "Nguyen Trai Quan 5", "vehicle_condition": "xit lop", "city_name": "TP HCM", "full_name": "Le Thi Mai", "vehicle_model": "Lux A", "vehicle_type": "o to xang", "current_odo": "35000"}}},
-      {"user": "0912345678", "nlu": {"extracted_fields": {"phone": "0912345678"}}},
-      {"user": "ừ đúng", "expect": {"slot_status": {"phone": "confirmed"}}},
-      {"user": "51F-12345", "nlu": {"extracted_fields": {"license_plate_vin": "51F-12345"}}},
-      {"user": "đúng rồi em", "expect": {"done": true}}
+      {"user": "em cần đặt cứu hộ kéo xe ô tô, xe ở đường Nguyễn Trãi", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "đường Nguyễn Trãi"}}, "expect": {"emergency": false}},
+      {"user": "xe bị đèn báo lỗi động cơ, em ở thành phố Hồ Chí Minh", "nlu": {"extracted_fields": {"vehicle_condition": "đèn báo lỗi động cơ", "city_name": "thành phố Hồ Chí Minh"}}},
+      {"user": "em tên Lê Thị Mai, số điện thoại 0912345678", "nlu": {"extracted_fields": {"full_name": "Lê Thị Mai", "phone": "0912345678"}}, "expect": {"slot_status": {"phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"phone": "confirmed"}}},
+      {"user": "xe Lux A, là ô tô xăng", "nlu": {"extracted_fields": {"vehicle_model": "Lux A", "vehicle_type": "ô tô xăng"}}},
+      {"user": "biển số 51F-12345", "nlu": {"extracted_fields": {"license_plate_vin": "51F-12345"}}, "expect": {"slot_status": {"license_plate_vin": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"license_plate_vin": "confirmed"}}},
+      {"user": "xe đã đi 35000 km", "nlu": {"extracted_fields": {"current_odo": "35000"}}, "expect": {"done": true}}
     ],
-    "final_expected": {"fields": {"current_location": "Nguyen Trai Quan 5", "vehicle_condition": "xit lop", "phone": "0912345678", "city_name": "TP HCM", "full_name": "Le Thi Mai", "vehicle_model": "Lux A", "license_plate_vin": "51F-12345", "vehicle_type": "o to xang", "current_odo": "35000"}}
+    "final_expected": {"fields": {"current_location": "đường Nguyễn Trãi", "vehicle_condition": "đèn báo lỗi động cơ", "phone": "0912345678", "city_name": "thành phố Hồ Chí Minh", "full_name": "Lê Thị Mai", "vehicle_model": "Lux A", "license_plate_vin": "51F-12345", "vehicle_type": "ô tô xăng", "current_odo": "35000"}}
   },
   {
     "id": "g2_warranty_basic",
     "tier": "happy",
     "category_expected": "G_2",
     "turns": [
-      {"user": "em muốn đặt lịch bảo dưỡng ô tô", "nlu": {"category": "G_2", "extracted_fields": {"full_name": "Tran Van Hung", "vehicle_model": "VF 8", "vehicle_usage_type": "ca nhan", "service_center": "VinFast Long Bien", "vehicle_condition": "den bao bao duong"}}, "expect": {"asks_field": "owner_phone"}},
-      {"user": "0901234567", "nlu": {"extracted_fields": {"owner_phone": "0901234567"}}},
-      {"user": "đúng", "expect": {"asks_field": "license_plate_vin"}},
-      {"user": "30A-12345", "nlu": {"extracted_fields": {"license_plate_vin": "30A-12345"}}},
-      {"user": "chuẩn rồi", "expect": {"done": true}}
+      {"user": "em muốn đặt lịch bảo dưỡng ô tô VF 8", "nlu": {"category": "G_2", "extracted_fields": {"vehicle_model": "VF 8"}}},
+      {"user": "em tên Trần Văn Hùng, số điện thoại chủ xe 0901234567", "nlu": {"extracted_fields": {"full_name": "Trần Văn Hùng", "owner_phone": "0901234567"}}, "expect": {"slot_status": {"owner_phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"owner_phone": "confirmed"}}},
+      {"user": "xe dùng cá nhân, bảo dưỡng tại trung tâm VinFast Long Biên", "nlu": {"extracted_fields": {"vehicle_usage_type": "cá nhân", "service_center": "VinFast Long Biên"}}},
+      {"user": "biển số 30A-12345", "nlu": {"extracted_fields": {"license_plate_vin": "30A-12345"}}, "expect": {"slot_status": {"license_plate_vin": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"license_plate_vin": "confirmed"}}},
+      {"user": "xe bị đèn báo lỗi động cơ", "nlu": {"extracted_fields": {"vehicle_condition": "đèn báo lỗi động cơ"}}, "expect": {"done": true}}
     ],
-    "final_expected": {"fields": {"full_name": "Tran Van Hung", "owner_phone": "0901234567", "vehicle_model": "VF 8", "vehicle_usage_type": "ca nhan", "license_plate_vin": "30A-12345", "service_center": "VinFast Long Bien", "vehicle_condition": "den bao bao duong"}}
+    "final_expected": {"fields": {"full_name": "Trần Văn Hùng", "owner_phone": "0901234567", "vehicle_model": "VF 8", "vehicle_usage_type": "cá nhân", "license_plate_vin": "30A-12345", "service_center": "VinFast Long Biên", "vehicle_condition": "đèn báo lỗi động cơ"}}
   },
   {
     "id": "g2_warranty_taxi",
     "tier": "happy",
     "category_expected": "G_2",
     "turns": [
-      {"user": "xe taxi của bên em cần sửa điều hòa", "nlu": {"category": "G_2", "extracted_fields": {"full_name": "Le Thi Mai", "vehicle_model": "VF e34", "vehicle_usage_type": "taxi (Xanh SM)", "service_center": "VinFast Q7", "vehicle_condition": "dieu hoa khong mat"}}},
-      {"user": "0912345678", "nlu": {"extracted_fields": {"owner_phone": "0912345678"}}},
-      {"user": "đúng rồi", "expect": {"slot_status": {"owner_phone": "confirmed"}}},
-      {"user": "51F-12345", "nlu": {"extracted_fields": {"license_plate_vin": "51F-12345"}}},
-      {"user": "ok đúng", "expect": {"done": true}}
+      {"user": "công ty em cần sửa điều hòa xe VF e34", "nlu": {"category": "G_2", "extracted_fields": {"vehicle_model": "VF e34"}}},
+      {"user": "em tên Lê Thị Mai, số điện thoại chủ xe 0912345678", "nlu": {"extracted_fields": {"full_name": "Lê Thị Mai", "owner_phone": "0912345678"}}, "expect": {"slot_status": {"owner_phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"owner_phone": "confirmed"}}},
+      {"user": "xe chạy taxi, sửa tại trung tâm VinFast Quận 7", "nlu": {"extracted_fields": {"vehicle_usage_type": "taxi", "service_center": "VinFast Quận 7"}}},
+      {"user": "biển số 51F-12345", "nlu": {"extracted_fields": {"license_plate_vin": "51F-12345"}}, "expect": {"slot_status": {"license_plate_vin": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"license_plate_vin": "confirmed"}}},
+      {"user": "xe bị điều hòa không mát", "nlu": {"extracted_fields": {"vehicle_condition": "điều hòa không mát"}}, "expect": {"done": true}}
     ],
-    "final_expected": {"fields": {"full_name": "Le Thi Mai", "owner_phone": "0912345678", "vehicle_model": "VF e34", "vehicle_usage_type": "taxi (Xanh SM)", "license_plate_vin": "51F-12345", "service_center": "VinFast Q7", "vehicle_condition": "dieu hoa khong mat"}}
+    "final_expected": {"fields": {"full_name": "Lê Thị Mai", "owner_phone": "0912345678", "vehicle_model": "VF e34", "vehicle_usage_type": "taxi", "license_plate_vin": "51F-12345", "service_center": "VinFast Quận 7", "vehicle_condition": "điều hòa không mát"}}
   },
   {
     "id": "g3_order_basic",
     "tier": "happy",
     "category_expected": "G_3",
     "turns": [
-      {"user": "em hỏi đơn đặt cọc VF 3", "nlu": {"category": "G_3", "extracted_fields": {"full_name": "Tran Van Hung", "order_code_dealer": "DH12345", "customer_type": "ca nhan"}}, "expect": {"asks_field": "order_phone", "not_reask": "full_name"}},
-      {"user": "0901234567", "nlu": {"extracted_fields": {"order_phone": "0901234567"}}, "expect": {"slot_status": {"order_phone": "pending"}}},
-      {"user": "đúng rồi", "expect": {"done": true, "slot_status": {"order_phone": "confirmed"}}}
+      {"user": "em hỏi tình trạng đơn đặt cọc xe của em", "nlu": {"category": "G_3"}, "expect": {"asks_field": "full_name"}},
+      {"user": "em tên Trần Văn Hùng", "nlu": {"extracted_fields": {"full_name": "Trần Văn Hùng"}}},
+      {"user": "số điện thoại đặt hàng 0901234567", "nlu": {"extracted_fields": {"order_phone": "0901234567"}}, "expect": {"slot_status": {"order_phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"order_phone": "confirmed"}}},
+      {"user": "mã đơn hàng DH12345", "nlu": {"extracted_fields": {"order_code_dealer": "DH12345"}}},
+      {"user": "em là khách cá nhân", "nlu": {"extracted_fields": {"customer_type": "cá nhân"}}, "expect": {"done": true}}
     ],
-    "final_expected": {"fields": {"full_name": "Tran Van Hung", "order_phone": "0901234567", "order_code_dealer": "DH12345", "customer_type": "ca nhan"}}
+    "final_expected": {"fields": {"full_name": "Trần Văn Hùng", "order_phone": "0901234567", "order_code_dealer": "DH12345", "customer_type": "cá nhân"}}
   },
   {
     "id": "g3_order_business",
     "tier": "happy",
     "category_expected": "G_3",
     "turns": [
-      {"user": "công ty em hỏi tình trạng đơn hàng", "nlu": {"category": "G_3", "extracted_fields": {"full_name": "Le Thi Mai", "order_code_dealer": "DH67890", "customer_type": "doanh nghiep"}}},
-      {"user": "0912345678", "nlu": {"extracted_fields": {"order_phone": "0912345678"}}},
-      {"user": "chính xác", "expect": {"done": true}}
+      {"user": "công ty em hỏi tình trạng đơn hàng", "nlu": {"category": "G_3"}, "expect": {"asks_field": "full_name"}},
+      {"user": "em tên Lê Thị Mai", "nlu": {"extracted_fields": {"full_name": "Lê Thị Mai"}}},
+      {"user": "số điện thoại đặt hàng 0912345678", "nlu": {"extracted_fields": {"order_phone": "0912345678"}}, "expect": {"slot_status": {"order_phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"order_phone": "confirmed"}}},
+      {"user": "mã đơn hàng DH67890, bên em là khách doanh nghiệp", "nlu": {"extracted_fields": {"order_code_dealer": "DH67890", "customer_type": "doanh nghiệp"}}, "expect": {"done": true}}
     ],
-    "final_expected": {"fields": {"full_name": "Le Thi Mai", "order_phone": "0912345678", "order_code_dealer": "DH67890", "customer_type": "doanh nghiep"}}
+    "final_expected": {"fields": {"full_name": "Lê Thị Mai", "order_phone": "0912345678", "order_code_dealer": "DH67890", "customer_type": "doanh nghiệp"}}
   },
   {
     "id": "g4_motorbike_basic",
     "tier": "happy",
     "category_expected": "G_4",
     "turns": [
-      {"user": "xe máy điện của em cần bảo hành", "nlu": {"category": "G_4", "extracted_fields": {"full_name": "Tran Van Hung", "vehicle_line": "Klara S", "current_location": "Cau Giay Ha Noi", "vehicle_condition": "den bao loi pin"}}, "expect": {"asks_field": "phone"}},
-      {"user": "0901234567", "nlu": {"extracted_fields": {"phone": "0901234567"}}},
-      {"user": "đúng", "expect": {"asks_field": "license_plate_vin"}},
-      {"user": "30A-12345", "nlu": {"extracted_fields": {"license_plate_vin": "30A-12345"}}},
-      {"user": "đúng rồi", "expect": {"done": true}}
+      {"user": "xe máy điện của em cần bảo hành, dòng Klara S", "nlu": {"category": "G_4", "extracted_fields": {"vehicle_line": "Klara S"}}},
+      {"user": "em tên Trần Văn Hùng, số điện thoại 0901234567", "nlu": {"extracted_fields": {"full_name": "Trần Văn Hùng", "phone": "0901234567"}}, "expect": {"slot_status": {"phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"phone": "confirmed"}}},
+      {"user": "xe bị đèn báo lỗi pin, em ở Cầu Giấy Hà Nội", "nlu": {"extracted_fields": {"vehicle_condition": "đèn báo lỗi pin", "current_location": "Cầu Giấy Hà Nội"}}},
+      {"user": "biển số 30A-12345", "nlu": {"extracted_fields": {"license_plate_vin": "30A-12345"}}, "expect": {"slot_status": {"license_plate_vin": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"license_plate_vin": "confirmed"}, "done": true}}
     ],
-    "final_expected": {"fields": {"full_name": "Tran Van Hung", "phone": "0901234567", "vehicle_line": "Klara S", "license_plate_vin": "30A-12345", "current_location": "Cau Giay Ha Noi", "vehicle_condition": "den bao loi pin"}}
+    "final_expected": {"fields": {"full_name": "Trần Văn Hùng", "phone": "0901234567", "vehicle_line": "Klara S", "license_plate_vin": "30A-12345", "current_location": "Cầu Giấy Hà Nội", "vehicle_condition": "đèn báo lỗi pin"}}
   },
   {
     "id": "g4_motorbike_vento",
     "tier": "happy",
     "category_expected": "G_4",
     "turns": [
-      {"user": "xe Vento của chị bị lỗi sạc", "nlu": {"category": "G_4", "extracted_fields": {"full_name": "Le Thi Mai", "vehicle_line": "Vento S", "current_location": "Thu Duc TP HCM", "vehicle_condition": "khong sac duoc"}}},
-      {"user": "0912345678", "nlu": {"extracted_fields": {"phone": "0912345678"}}},
-      {"user": "ừ", "expect": {"slot_status": {"phone": "confirmed"}}},
-      {"user": "51F-12345", "nlu": {"extracted_fields": {"license_plate_vin": "51F-12345"}}},
-      {"user": "đúng rồi", "expect": {"done": true}}
+      {"user": "xe máy điện của em dòng Vento S cần bảo hành", "nlu": {"category": "G_4", "extracted_fields": {"vehicle_line": "Vento S"}}},
+      {"user": "em tên Lê Thị Mai, số điện thoại 0912345678", "nlu": {"extracted_fields": {"full_name": "Lê Thị Mai", "phone": "0912345678"}}, "expect": {"slot_status": {"phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"phone": "confirmed"}}},
+      {"user": "xe không sạc được, em ở Thủ Đức thành phố Hồ Chí Minh", "nlu": {"extracted_fields": {"vehicle_condition": "không sạc được", "current_location": "Thủ Đức thành phố Hồ Chí Minh"}}},
+      {"user": "biển số 51F-12345", "nlu": {"extracted_fields": {"license_plate_vin": "51F-12345"}}, "expect": {"slot_status": {"license_plate_vin": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"license_plate_vin": "confirmed"}, "done": true}}
     ],
-    "final_expected": {"fields": {"full_name": "Le Thi Mai", "phone": "0912345678", "vehicle_line": "Vento S", "license_plate_vin": "51F-12345", "current_location": "Thu Duc TP HCM", "vehicle_condition": "khong sac duoc"}}
+    "final_expected": {"fields": {"full_name": "Lê Thị Mai", "phone": "0912345678", "vehicle_line": "Vento S", "license_plate_vin": "51F-12345", "current_location": "Thủ Đức thành phố Hồ Chí Minh", "vehicle_condition": "không sạc được"}}
   },
   {
     "id": "g5_remote_tech_basic",
     "tier": "happy",
     "category_expected": "G_5",
     "turns": [
-      {"user": "màn hình giải trí xe em cứ tự khởi động lại", "nlu": {"category": "G_5", "extracted_fields": {"full_name": "Tran Van Hung", "vehicle_line": "VF 8", "vehicle_condition_details": "man hinh tu khoi dong lai"}}, "expect": {"asks_field": "phone"}},
-      {"user": "0901234567", "nlu": {"extracted_fields": {"phone": "0901234567"}}},
-      {"user": "đúng", "expect": {"asks_field": "license_plate_vin"}},
-      {"user": "30A-12345", "nlu": {"extracted_fields": {"license_plate_vin": "30A-12345"}}},
-      {"user": "đúng rồi", "expect": {"done": true}}
+      {"user": "em cần hỗ trợ kỹ thuật từ xa cho xe ô tô VinFast", "nlu": {"category": "G_5"}},
+      {"user": "lỗi kỹ thuật là màn hình giải trí tự khởi động lại", "nlu": {"extracted_fields": {"vehicle_condition_details": "màn hình giải trí tự khởi động lại"}}},
+      {"user": "xe của em là dòng VF 8", "nlu": {"extracted_fields": {"vehicle_line": "VF 8"}}},
+      {"user": "em tên Trần Văn Hùng, số điện thoại 0901234567", "nlu": {"extracted_fields": {"full_name": "Trần Văn Hùng", "phone": "0901234567"}}, "expect": {"slot_status": {"phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"phone": "confirmed"}}},
+      {"user": "biển số 30A-12345", "nlu": {"extracted_fields": {"license_plate_vin": "30A-12345"}}, "expect": {"slot_status": {"license_plate_vin": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"license_plate_vin": "confirmed"}, "done": true}}
     ],
-    "final_expected": {"fields": {"full_name": "Tran Van Hung", "phone": "0901234567", "license_plate_vin": "30A-12345", "vehicle_line": "VF 8", "current_odo": null, "vehicle_condition_details": "man hinh tu khoi dong lai"}}
+    "final_expected": {"fields": {"full_name": "Trần Văn Hùng", "phone": "0901234567", "license_plate_vin": "30A-12345", "vehicle_line": "VF 8", "current_odo": null, "vehicle_condition_details": "màn hình giải trí tự khởi động lại"}}
   },
   {
     "id": "g5_remote_tech_app",
     "tier": "happy",
     "category_expected": "G_5",
     "turns": [
-      {"user": "app my vinfast của em đăng nhập không được", "nlu": {"category": "G_5", "extracted_fields": {"full_name": "Le Thi Mai", "vehicle_line": "VF e34", "vehicle_condition_details": "app khong dang nhap duoc"}}},
-      {"user": "0912345678", "nlu": {"extracted_fields": {"phone": "0912345678"}}},
-      {"user": "chuẩn", "expect": {"slot_status": {"phone": "confirmed"}}},
-      {"user": "51F-12345", "nlu": {"extracted_fields": {"license_plate_vin": "51F-12345"}}},
-      {"user": "đúng rồi", "expect": {"done": true}}
+      {"user": "em cần hỗ trợ kỹ thuật từ xa cho xe ô tô VinFast", "nlu": {"category": "G_5"}},
+      {"user": "lỗi kỹ thuật là app My VinFast không đăng nhập được", "nlu": {"extracted_fields": {"vehicle_condition_details": "app My VinFast không đăng nhập được"}}},
+      {"user": "xe của em là dòng VF e34", "nlu": {"extracted_fields": {"vehicle_line": "VF e34"}}},
+      {"user": "em tên Lê Thị Mai, số điện thoại 0912345678", "nlu": {"extracted_fields": {"full_name": "Lê Thị Mai", "phone": "0912345678"}}, "expect": {"slot_status": {"phone": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"phone": "confirmed"}}},
+      {"user": "biển số 51F-12345", "nlu": {"extracted_fields": {"license_plate_vin": "51F-12345"}}, "expect": {"slot_status": {"license_plate_vin": "pending"}}},
+      {"user": "đúng rồi", "nlu": {}, "expect": {"slot_status": {"license_plate_vin": "confirmed"}, "done": true}}
     ],
-    "final_expected": {"fields": {"full_name": "Le Thi Mai", "phone": "0912345678", "license_plate_vin": "51F-12345", "vehicle_line": "VF e34", "current_odo": null, "vehicle_condition_details": "app khong dang nhap duoc"}}
+    "final_expected": {"fields": {"full_name": "Lê Thị Mai", "phone": "0912345678", "license_plate_vin": "51F-12345", "vehicle_line": "VF e34", "current_odo": null, "vehicle_condition_details": "app My VinFast không đăng nhập được"}}
   }
 ]
