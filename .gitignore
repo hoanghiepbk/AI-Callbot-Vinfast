@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+*.onnx
+models/*.bin
+scenarios/audio/*.wav
+.DS_Store
