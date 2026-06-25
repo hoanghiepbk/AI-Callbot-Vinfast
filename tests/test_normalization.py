@@ -1,6 +1,5 @@
 from callbot.normalization.vietnamese_numbers import VietnameseNormalizer, normalize_field
 
-
 normalizer = VietnameseNormalizer()
 
 
@@ -76,7 +75,10 @@ def test_free_text_preserved_for_name() -> None:
 
 
 def test_free_text_preserved_for_location() -> None:
-    assert value("current_location", "cao toc Ha Noi Hai Phong km 32") == "cao toc Ha Noi Hai Phong km 32"
+    assert (
+        value("current_location", "cao toc Ha Noi Hai Phong km 32")
+        == "cao toc Ha Noi Hai Phong km 32"
+    )
 
 
 def test_empty_strict_field_fails() -> None:
