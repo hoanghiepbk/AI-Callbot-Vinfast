@@ -1,8 +1,9 @@
+# FROZEN CONTRACT — changes require both tracks to agree (WORKFLOW §5).
 """ASR interface (Protocol) and result types."""
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -13,6 +14,7 @@ class ASRResult(BaseModel):
     latency_ms: float
 
 
+@runtime_checkable
 class ASR(Protocol):
     def transcribe(self, audio, sample_rate: int = 16000) -> ASRResult: ...
 
