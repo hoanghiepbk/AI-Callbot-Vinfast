@@ -9,6 +9,7 @@ scenarios/audio/*.wav
 *.egg-info/
 build/
 dist/
+eval/results.json
 
 # Claude config — local, không commit
 CLAUDE.md
