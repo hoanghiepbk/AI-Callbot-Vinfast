@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "callbot"
+version = "0.0.0"
+description = "VinFast Vietnamese customer-service callbot (Task 3)"
+requires-python = ">=3.11"
+
+# src-layout: package lives under src/callbot so `pip install -e .` exposes `import callbot`.
+[tool.setuptools.packages.find]
+where = ["src"]
