@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 from callbot.dialogue.engine import TurnResult
 from callbot.models.schemas import (
     READBACK_REQUIRED,
+    Category,
     FinalOutput,
     PostCall,
 )
@@ -61,6 +62,11 @@ class FakeDialogueEngine:
         # uses canned replies, not real LLM calls.
         self._llm = llm
         self._normalizer = normalizer
+        self._turn_index: int = 0
+        self._slots: dict[str, str | None] = {}
+        self._category: Category | None = None
+        self._done: bool = False
+        self._turn_history: list[str] = []
         self.reset()
 
     def process(self, user_text: str) -> TurnResult:
@@ -113,13 +119,13 @@ class FakeDialogueEngine:
                 state=self._snapshot(),
             )
 
-        # Step 7: ask for the next unfilled field (rotate 2 variants).
+        # Step 7: ask for the next unfilled field (rotate 2 variants). Step 6 guarantees
+        # at least one slot is still unfilled here, so default to the first field.
         next_slot = next(
-            (s for s in self._FIELD_ORDER if self._slots.get(s) is None), None
+            (s for s in self._FIELD_ORDER if self._slots.get(s) is None),
+            self._FIELD_ORDER[0],
         )
-        variants = self._ASK_TEMPLATES.get(
-            next_slot, ["Anh/chị cho em xin thêm thông tin ạ?"]
-        )
+        variants = self._ASK_TEMPLATES.get(next_slot, ["Anh/chị cho em xin thêm thông tin ạ?"])
         reply = variants[self._turn_index % len(variants)]
         return TurnResult(reply=reply, done=self._done, state=self._snapshot())
 
@@ -137,10 +143,10 @@ class FakeDialogueEngine:
 
     def reset(self) -> None:
         self._turn_index = 0
-        self._slots: dict[str, str | None] = {k: None for k in self._FIELD_ORDER}
-        self._category: str | None = None
+        self._slots = {k: None for k in self._FIELD_ORDER}
+        self._category = None
         self._done = False
-        self._turn_history: list[str] = []
+        self._turn_history = []
 
     def _snapshot(self) -> dict:
         return {

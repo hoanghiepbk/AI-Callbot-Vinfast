@@ -159,9 +159,7 @@ class CallbotPipeline:
         engine_latency_ms = (time.perf_counter() - process_started) * 1000.0
 
         llm_latency_ms = (
-            self._llm_proxy.last_latency_ms
-            if self._llm_proxy is not None
-            else engine_latency_ms
+            self._llm_proxy.last_latency_ms if self._llm_proxy is not None else engine_latency_ms
         )
 
         reply_audio: bytes | None = None
