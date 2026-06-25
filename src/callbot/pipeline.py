@@ -18,15 +18,25 @@ from callbot.tts import TTS, create_tts
 
 
 class _LatencyLLMProxy:
-    """Proxy that preserves the LLM protocol and records the last call latency."""
+    """Proxy that preserves the LLM protocol and records LLM latency for the turn.
+
+    A single turn may issue more than one LLM call (today nlu=1, but post-call or a
+    future re-prompt could add a second). So we ACCUMULATE every call's latency within
+    a turn instead of keeping only the last — `start_turn()` zeroes the accumulator at
+    the top of each turn and `last_latency_ms` then holds the turn's total LLM time.
+    """
 
     def __init__(self, llm: LLM) -> None:
         self._llm = llm
+        self.last_latency_ms = 0.0  # total LLM time within the current turn
+
+    def start_turn(self) -> None:
+        """Reset the per-turn accumulator (call at the top of each pipeline turn)."""
         self.last_latency_ms = 0.0
 
     def complete(self, system: str, user: str, json_schema: dict | None = None):
         result = self._llm.complete(system, user, json_schema)
-        self.last_latency_ms = result.latency_ms
+        self.last_latency_ms += result.latency_ms  # accumulate within the turn
         return result
 
     def __getattr__(self, name: str) -> Any:
@@ -143,6 +153,8 @@ class CallbotPipeline:
         sr = sample_rate or self.default_sample_rate
         user_text = text
         asr_latency_ms = 0.0
+        if self._llm_proxy is not None:
+            self._llm_proxy.start_turn()  # reset per-turn LLM accumulator
 
         if user_text is None:
             if audio is None:
