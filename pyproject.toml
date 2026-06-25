@@ -38,7 +38,9 @@ target-version = "py311"
 select = ["E", "F", "I"]   # pycodestyle errors, pyflakes, isort
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12 (not the 3.11 runtime) so mypy can parse modern dependency stubs — numpy 2.5
+# uses the 3.12 `type` statement. Runtime stays 3.11 (requires-python + CI + ruff).
+python_version = "3.12"
 ignore_missing_imports = true   # several ML libs ship no type stubs
 
 [tool.pytest.ini_options]

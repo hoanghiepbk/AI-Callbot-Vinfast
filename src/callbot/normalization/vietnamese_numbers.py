@@ -13,7 +13,6 @@ from dataclasses import dataclass
 
 from callbot.models.schemas import NormResult, validate_field
 
-
 _PHONE_FIELDS = {"phone", "owner_phone", "order_phone"}
 _STRICT_FIELDS = _PHONE_FIELDS | {"license_plate_vin"}
 
@@ -170,7 +169,9 @@ def _parse_integer_phrase(text: str) -> int | None:
     digits = _parse_number_words(tokens)
     if not digits:
         return None
-    base = sum(digits) if multiplier >= 1000 and len(digits) <= 3 else int("".join(map(str, digits)))
+    base = (
+        sum(digits) if multiplier >= 1000 and len(digits) <= 3 else int("".join(map(str, digits)))
+    )
     return base * multiplier
 
 
@@ -195,11 +196,7 @@ def _vin_candidate(raw: str) -> str:
             parts.extend(ch.upper() for ch in token if ch.isalnum())
         elif token.isdigit():
             parts.extend(token)
-        elif (
-            token in _DIGIT_WORDS
-            and i + 1 < len(tokens)
-            and tokens[i + 1] in {"muoi", "muoi"}
-        ):
+        elif token in _DIGIT_WORDS and i + 1 < len(tokens) and tokens[i + 1] in {"muoi", "muoi"}:
             parts.append(str(int(_DIGIT_WORDS[token]) * 10))
             i += 1
         elif token in _DIGIT_WORDS:
@@ -244,6 +241,7 @@ class VietnameseNormalizer:
         if not text:
             return NormResult(value=None, parse_failed=True)
 
+        value: str | None
         if field in _PHONE_FIELDS:
             value = _normalize_phone(text)
         elif field == "license_plate_vin":
