@@ -108,6 +108,7 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
         new_pending: str | None = None
         new_reason: str | None = None
         turn_failed = False
+        progressed = False  # did this turn advance slot-filling at all? (#7 stuck)
 
         # 1. Resolve an outstanding readback from last turn, when the caller did NOT
         #    re-provide that field. Default is confirm (silence = yes), BUT an explicit
@@ -126,6 +127,7 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
                 slots[pending] = slots[pending].model_copy(
                     update={"status": SlotStatus.CONFIRMED, "confirmed_at": state.turn_index}
                 )
+                progressed = True
 
         # 2. Normalize + store every field provided this turn.
         for field, raw in provided.items():
@@ -150,6 +152,15 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
                     raw_utterance=raw,
                     confirmed_at=state.turn_index,
                 )
+            progressed = True
+
+        # 3. No-progress turn (#7): category locked but nothing advanced — not a field,
+        #    not a readback resolution, not even a (re)stated intent. Count it as a failed
+        #    turn so repeated dead ends (empty NLU, nothing extracted) escalate to a human.
+        #    OOS/hangup turns are deliberate digressions, not failures.
+        if not turn_failed and not progressed and state.nlu_category is None:
+            if not (state.signals.out_of_scope or state.signals.hangup):
+                turn_failed = True
 
         return {
             "slots": slots,
@@ -184,7 +195,7 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
 
         if state.signals.hangup:  # (#8) caller wants to stop -> goodbye, engine finalizes
             return {"reply": tmpl.closing_goodbye(ti), "done": True}
-        if state.signals.out_of_scope and state.category is None:
+        if state.signals.out_of_scope:  # (#4) redirect at ANY point, keep collected state
             return out(tmpl.redirect(ti))
         if state.offer_human:  # (#7) stuck
             return out(tmpl.offer_human(ti))

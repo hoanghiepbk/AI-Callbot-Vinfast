@@ -374,6 +374,63 @@ def test_finalize_cache_invalidated_by_new_turn():
     assert llm.summary_calls == 2
 
 
+# --- #4 out-of-scope at any point + #7 stuck escalation (A20) ---
+def test_oos_midcall_redirects_and_keeps_state():
+    script = {
+        "intro": nlu_payload(category="G_2"),
+        "name": nlu_payload(extracted={"full_name": "Tran Van Hung"}),
+        "oos": nlu_payload(out_of_scope=True),
+        "resume": nlu_payload(extracted={"owner_phone": "0901234567"}),
+    }
+    engine = _engine(script)
+    engine.process("intro")
+    engine.process("name")
+    r3 = engine.process("oos")
+    assert "ngoài phạm vi" in r3.reply  # (#4) redirected even with category locked
+    assert r3.state["slots"]["full_name"]["status"] == "confirmed"  # state preserved
+    r4 = engine.process("resume")  # caller returns to topic -> flow resumes
+    assert r4.state["slots"]["owner_phone"]["status"] == "pending"
+
+
+def test_stuck_two_no_progress_turns_offers_human():
+    script = {"intro": nlu_payload(category="G_3"), "huh": nlu_payload(), "um": nlu_payload()}
+    engine = _engine(script)
+    engine.process("intro")
+    engine.process("huh")  # empty NLU, no field -> failed 1
+    r3 = engine.process("um")  # empty NLU again -> failed 2 -> escalate (#7)
+    assert r3.state["offer_human"] is True
+    assert "tổng đài viên" in r3.reply
+
+
+def test_stuck_two_garbled_turns_offers_human():
+    script = {
+        "intro": nlu_payload(category="G_4"),
+        "name": nlu_payload(extracted={"full_name": "Tran Van Hung"}),
+        "bad1": nlu_payload(extracted={"phone": "abc"}),
+        "bad2": nlu_payload(extracted={"phone": "xyz"}),
+    }
+    engine = _engine(script)
+    engine.process("intro")
+    engine.process("name")
+    engine.process("bad1")  # garbled -> failed 1
+    r = engine.process("bad2")  # garbled -> failed 2 -> escalate (#7 via parse-fail path)
+    assert r.state["offer_human"] is True
+
+
+def test_oos_turn_does_not_count_as_stuck():
+    # A digression is not a comprehension failure: OOS must not escalate to a human.
+    script = {
+        "intro": nlu_payload(category="G_3"),
+        "oos1": nlu_payload(out_of_scope=True),
+        "oos2": nlu_payload(out_of_scope=True),
+    }
+    engine = _engine(script)
+    engine.process("intro")
+    engine.process("oos1")
+    r3 = engine.process("oos2")
+    assert r3.state["offer_human"] is False
+
+
 # --- Live smoke test (skipped without Ollama) ---
 def _ollama_up() -> bool:
     try:

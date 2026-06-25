@@ -73,5 +73,38 @@
       {"user": "cho hỏi về cái xe", "nlu": {"category": null}, "expect": {"reply_contains": "hỗ trợ"}}
     ],
     "final_expected": {"fields": {}}
+  },
+  {
+    "id": "adv_missing_no_reask",
+    "tier": "quality",
+    "category_expected": "G_3",
+    "turns": [
+      {"user": "em hỏi đơn hàng, tên Tran Van Hung", "nlu": {"category": "G_3", "extracted_fields": {"full_name": "Tran Van Hung"}}, "expect": {"asks_field": "order_phone", "not_reask": "full_name"}},
+      {"user": "0901234567", "nlu": {"extracted_fields": {"order_phone": "0901234567"}}},
+      {"user": "đúng rồi", "expect": {"asks_field": "order_code_dealer", "not_reask": "full_name"}}
+    ],
+    "final_expected": {"fields": {"full_name": "Tran Van Hung", "order_phone": "0901234567", "order_code_dealer": null, "customer_type": null}}
+  },
+  {
+    "id": "adv_garbled_repeat",
+    "tier": "critical",
+    "category_expected": "G_4",
+    "turns": [
+      {"user": "xe máy điện cần bảo hành", "nlu": {"category": "G_4"}},
+      {"user": "em tên Tran Van Hung", "nlu": {"extracted_fields": {"full_name": "Tran Van Hung"}}},
+      {"user": "số là a bê xê gì đó", "nlu": {"extracted_fields": {"phone": "abc"}}, "expect": {"reply_contains": "nhắc lại", "slot_status": {"phone": "pending"}}}
+    ],
+    "final_expected": {"fields": {"full_name": "Tran Van Hung", "phone": null, "vehicle_line": null, "license_plate_vin": null, "current_location": null, "vehicle_condition": null}}
+  },
+  {
+    "id": "adv_stuck_offer_human",
+    "tier": "critical",
+    "category_expected": "G_3",
+    "turns": [
+      {"user": "em hỏi đơn hàng", "nlu": {"category": "G_3"}},
+      {"user": "ờ", "nlu": {}},
+      {"user": "ừm để xem", "nlu": {}, "expect": {"reply_contains": "tổng đài viên"}}
+    ],
+    "final_expected": {"fields": {"full_name": null, "order_phone": null, "order_code_dealer": null, "customer_type": null}}
   }
 ]
