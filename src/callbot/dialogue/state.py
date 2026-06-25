@@ -1,20 +1,38 @@
-"""CallState: LangGraph state schema (skeleton — Wave 1 fills behaviour).
+"""CallState: the LangGraph StateGraph schema and single source of truth (BLUEPRINT §1A).
 
-CallState IS the StateGraph state schema (single source of truth, BLUEPRINT §1A).
-Fields are declared here; the turn loop that mutates them is Wave 1 (TASK-A13).
+Persistent fields carry across turns (the call's memory); transient fields are written
+by the nodes within ONE turn and reset by the engine before the next invoke. Nodes are
+pure `(state) -> dict_update` functions — they never mutate this object in place.
 """
 
 from __future__ import annotations
 
 from pydantic import BaseModel
 
-from callbot.models.schemas import Category, Slot
+from callbot.models.schemas import Category, IntentSignals, Slot
 
 
 class CallState(BaseModel):
+    # ---- persistent (the call's memory) ----
     category: Category | None = None
     slots: dict[str, Slot] = {}
     emergency: bool = False
-    failed_turns: int = 0
-    transcript: list[str] = []
+    emergency_announced: bool = False  # hotline message already spoken once
+    failed_turns: int = 0  # consecutive garbled/ambiguous turns (#7 stuck)
     turn_index: int = 0
+    transcript: list[str] = []
+    pending_field: str | None = None  # field awaiting readback/repeat confirmation
+    pending_reason: str | None = None  # "readback" (D10) | "garbled" (#5)
+
+    # ---- transient (one turn; reset by engine before each invoke) ----
+    user_text: str = ""
+    extracted: dict[str, str] = {}
+    corrected: dict[str, str] = {}
+    signals: IntentSignals = IntentSignals()
+    nlu_category: Category | None = None
+    need_clarify: bool = False  # ambiguous, ask one clarifying question (#3)
+    turn_failed: bool = False  # this turn made no progress (garbled/ambiguous)
+    offer_human: bool = False  # escalate to a human (#7)
+    current_field: str | None = None  # next field to ask
+    reply: str = ""
+    done: bool = False
