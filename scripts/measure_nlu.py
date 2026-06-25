@@ -117,6 +117,7 @@ CASES: list[dict[str, object]] = [
 
 
 def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     client = ollama.Client(host=HOST)
     try:
         client.list()
@@ -146,6 +147,7 @@ def main() -> int:
                         {"role": "user", "content": text},
                     ],
                     format=schema,
+                    think=False,  # A10 fix: thinking OFF for structured (kills empty output)
                     options={"temperature": 0},
                     keep_alive="10m",
                 )
