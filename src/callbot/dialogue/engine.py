@@ -37,6 +37,7 @@ class DialogueEngine:
         self._llm = llm  # kept for the post-call summary at finalize()
         self._app = build_graph(llm, normalizer)
         self._state = CallState()
+        self._final: FinalOutput | None = None  # memoized finalize() (R5)
 
     def process(self, user_text: str) -> TurnResult:  # one turn
         turn_input = self._state.model_copy(
@@ -59,6 +60,7 @@ class DialogueEngine:
         )
         out: dict[str, Any] = self._app.invoke(turn_input)
         self._state = CallState.model_validate(out)
+        self._final = None  # a new turn invalidates any memoized finalize()
         return TurnResult(
             reply=self._state.reply,
             done=self._state.done,
@@ -66,6 +68,8 @@ class DialogueEngine:
         )
 
     def finalize(self) -> FinalOutput:  # assemble final JSON (also on hangup)
+        if self._final is not None:  # memoized — avoid re-calling the post-call LLM (R5)
+            return self._final
         state = self._state
         fields: dict[str, str | None] = {}
         if state.category is not None:
@@ -77,7 +81,9 @@ class DialogueEngine:
             for name, slot in state.slots.items():
                 fields[name] = slot.value if slot.status in _FILLED else None
         post_call = generate_post_call(self._llm, state.transcript, state)
-        return FinalOutput(category=state.category, fields=fields, post_call=post_call)
+        self._final = FinalOutput(category=state.category, fields=fields, post_call=post_call)
+        return self._final
 
     def reset(self) -> None:  # new call
         self._state = CallState()
+        self._final = None

@@ -42,10 +42,35 @@ _EMERGENCY_KEYWORDS = (
 
 _FILLED = {SlotStatus.CONFIRMED, SlotStatus.CORRECTED}
 
+# Deterministic denial detection for readback (R1). A readback must be able to CATCH a
+# wrong value (D10): when the caller rejects it we must NOT confirm. Phrases are clear
+# rejections; bare standalone "không" counts too, but "không" embedded in a longer reply
+# (e.g. "không sao, đúng rồi") does NOT, to avoid false denials on affirmations.
+_DENY_PHRASES = (
+    "không đúng",
+    "không phải",
+    "không chính xác",
+    "sai rồi",
+    "sai",
+    "nhầm",
+    "chưa đúng",
+    "đọc lại",
+    "nhập lại",
+    "đọc nhầm",
+)
+_DENY_EXACT = {"không", "không ạ", "không đâu", "ko", "hông", "hổng"}
+
 
 def _keyword_emergency(text: str) -> bool:
     low = text.lower()
     return any(kw in low for kw in _EMERGENCY_KEYWORDS)
+
+
+def _is_denial(text: str) -> bool:
+    low = text.strip().lower().rstrip(".!,? ")
+    if low in _DENY_EXACT:
+        return True
+    return any(phrase in low for phrase in _DENY_PHRASES)
 
 
 def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
@@ -84,17 +109,23 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
         new_reason: str | None = None
         turn_failed = False
 
-        # 1. A readback we asked last turn that the caller did NOT re-provide = confirmed.
+        # 1. Resolve an outstanding readback from last turn, when the caller did NOT
+        #    re-provide that field. Default is confirm (silence = yes), BUT an explicit
+        #    denial/correction keeps it PENDING and re-asks — readback exists to CATCH a
+        #    wrong value (D10, R1), so when in doubt we do NOT confirm.
+        pending = state.pending_field
         if (
-            state.pending_field is not None
-            and state.pending_reason == "readback"
-            and state.pending_field not in provided
-            and not state.signals.correction
+            pending is not None
+            and state.pending_reason in ("readback", "denied")
+            and pending not in provided
         ):
-            slot = slots[state.pending_field]
-            slots[state.pending_field] = slot.model_copy(
-                update={"status": SlotStatus.CONFIRMED, "confirmed_at": state.turn_index}
-            )
+            if _is_denial(state.user_text) or state.signals.correction:
+                new_pending, new_reason = pending, "denied"  # ask again, do NOT confirm
+                turn_failed = True
+            else:
+                slots[pending] = slots[pending].model_copy(
+                    update={"status": SlotStatus.CONFIRMED, "confirmed_at": state.turn_index}
+                )
 
         # 2. Normalize + store every field provided this turn.
         for field, raw in provided.items():
@@ -160,6 +191,8 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
         if state.pending_field is not None:
             if state.pending_reason == "garbled":
                 return out(tmpl.garbled_repeat(state.pending_field, ti))
+            if state.pending_reason == "denied":  # caller rejected the readback (R1)
+                return out(tmpl.readback_denied(state.pending_field, ti))
             value = state.slots[state.pending_field].value or ""
             return out(tmpl.readback(state.pending_field, value, ti))
         if state.need_clarify:  # (#3) ambiguous

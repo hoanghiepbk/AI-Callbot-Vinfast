@@ -58,6 +58,11 @@ def garbled_repeat(field: str, turn_index: int) -> str:
     return f"Em chưa nghe rõ {_label(field)}, anh/chị nhắc lại giúp em được không ạ?"
 
 
+def readback_denied(field: str, turn_index: int) -> str:
+    # Caller said the read-back value was wrong -> ask them to provide it again.
+    return f"Dạ em ghi chưa đúng, anh/chị đọc lại {_label(field)} giúp em ạ."
+
+
 def clarify(turn_index: int) -> str:
     return "Dạ anh/chị đang cần em hỗ trợ vấn đề gì để em phục vụ ạ?"
 
