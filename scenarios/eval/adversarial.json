@@ -1,0 +1,77 @@
+[
+  {
+    "id": "adv_calm_emergency",
+    "tier": "critical",
+    "category_expected": "G_1",
+    "turns": [
+      {"user": "anh ơi xe em đỗ giữa cao tốc không nổ được", "nlu": {"category": "G_1", "extracted_fields": {"current_location": "cao toc Ha Noi Hai Phong", "vehicle_condition": "khong no may"}, "signals": {"emergency": true}}, "expect": {"emergency": true}},
+      {"user": "số em 0901234567", "nlu": {"extracted_fields": {"phone": "0901234567"}}, "expect": {"slot_status": {"phone": "confirmed"}}},
+      {"user": "em Tran Van Hung, biển 30A-12345, xe VF 8 ô tô điện, ở Hải Phòng", "nlu": {"extracted_fields": {"full_name": "Tran Van Hung", "license_plate_vin": "30A-12345", "vehicle_model": "VF 8", "vehicle_type": "o to dien", "city_name": "Hai Phong"}}, "expect": {"done": true}}
+    ],
+    "final_expected": {"fields": {"current_location": "cao toc Ha Noi Hai Phong", "vehicle_condition": "khong no may", "phone": "0901234567", "city_name": "Hai Phong", "full_name": "Tran Van Hung", "vehicle_model": "VF 8", "license_plate_vin": "30A-12345", "vehicle_type": "o to dien", "current_odo": null}}
+  },
+  {
+    "id": "adv_readback_deny",
+    "tier": "critical",
+    "category_expected": "G_3",
+    "turns": [
+      {"user": "em hỏi đơn hàng", "nlu": {"category": "G_3", "extracted_fields": {"full_name": "Tran Van Hung"}}},
+      {"user": "số 0900000000", "nlu": {"extracted_fields": {"order_phone": "0900000000"}}, "expect": {"slot_status": {"order_phone": "pending"}}},
+      {"user": "không đúng", "nlu": {}, "expect": {"slot_status": {"order_phone": "pending"}, "reply_contains": "đọc lại"}},
+      {"user": "số đúng là 0901234567", "nlu": {"corrected_fields": {"order_phone": "0901234567"}}},
+      {"user": "đúng rồi", "expect": {"slot_status": {"order_phone": "confirmed"}}}
+    ],
+    "final_expected": {"fields": {"full_name": "Tran Van Hung", "order_phone": "0901234567", "order_code_dealer": null, "customer_type": null}}
+  },
+  {
+    "id": "adv_hangup_midway",
+    "tier": "critical",
+    "category_expected": "G_2",
+    "turns": [
+      {"user": "em hỏi bảo hành ô tô", "nlu": {"category": "G_2"}},
+      {"user": "em tên Tran Van Hung", "nlu": {"extracted_fields": {"full_name": "Tran Van Hung"}}},
+      {"user": "thôi để sau em gọi lại", "nlu": {"signals": {"hangup": true}}, "expect": {"done": true}}
+    ],
+    "final_expected": {"fields": {"full_name": "Tran Van Hung", "owner_phone": null, "vehicle_model": null, "vehicle_usage_type": null, "license_plate_vin": null, "service_center": null, "vehicle_condition": null}}
+  },
+  {
+    "id": "adv_correction_midcall",
+    "tier": "quality",
+    "category_expected": "G_3",
+    "turns": [
+      {"user": "em hỏi đơn hàng", "nlu": {"category": "G_3"}},
+      {"user": "tên Tran Van A", "nlu": {"extracted_fields": {"full_name": "Tran Van A"}}},
+      {"user": "à nhầm tên là Tran Van Hung", "nlu": {"corrected_fields": {"full_name": "Tran Van Hung"}, "signals": {"correction": true}}, "expect": {"slot_status": {"full_name": "corrected"}}}
+    ],
+    "final_expected": {"fields": {"full_name": "Tran Van Hung", "order_phone": null, "order_code_dealer": null, "customer_type": null}}
+  },
+  {
+    "id": "adv_identity_bare_no_overfire",
+    "tier": "quality",
+    "category_expected": null,
+    "turns": [
+      {"user": "số em là 0901234567", "nlu": {"extracted_fields": {"phone": "0901234567"}}, "expect": {"emergency": false}}
+    ],
+    "final_expected": {"fields": {}}
+  },
+  {
+    "id": "adv_oos_midcall",
+    "tier": "quality",
+    "category_expected": "G_2",
+    "turns": [
+      {"user": "em hỏi bảo hành ô tô", "nlu": {"category": "G_2"}},
+      {"user": "em tên Tran Van Hung", "nlu": {"extracted_fields": {"full_name": "Tran Van Hung"}}},
+      {"user": "mà mấy giờ shop đóng cửa vậy em", "nlu": {"signals": {"out_of_scope": true}}, "expect": {"reply_contains": "ngoài phạm vi"}}
+    ],
+    "final_expected": {"fields": {"full_name": "Tran Van Hung"}}
+  },
+  {
+    "id": "adv_ambiguous_first_turn",
+    "tier": "quality",
+    "category_expected": null,
+    "turns": [
+      {"user": "cho hỏi về cái xe", "nlu": {"category": null}, "expect": {"reply_contains": "hỗ trợ"}}
+    ],
+    "final_expected": {"fields": {}}
+  }
+]
