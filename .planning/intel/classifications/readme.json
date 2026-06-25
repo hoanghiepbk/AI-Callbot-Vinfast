@@ -1,0 +1,14 @@
+{
+  "filepath": "D:/Task4/AI-Callbot-Vinfast/README.md",
+  "type": "DOC",
+  "precedence": 7,
+  "title": "VinFast Vietnamese Customer Service Callbot — Task 3",
+  "scope": "Top-level orientation document for the VinFast AI callbot project covering the full pipeline (Mic → ASR → LLM dialogue → TTS), 5 inbound call categories, exception handling, evaluation criteria, planned project structure, tech stack summary, and setup instructions. Serves as the entry point for understanding project goals and design rationale without specifying locked decisions or detailed requirements.",
+  "cross_refs": [
+    "TECHSTACK.md",
+    "PLAN.md",
+    "BLUEPRINT.md",
+    "TASKGRAPH.md"
+  ],
+  "key_decisions": []
+}

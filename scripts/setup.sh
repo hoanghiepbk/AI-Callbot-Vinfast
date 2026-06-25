@@ -60,6 +60,11 @@ python -m pip install --upgrade pip --quiet
 echo "Installing requirements.txt (contract-layer deps) ..."
 python -m pip install -r requirements.txt
 
+# ---- Install the callbot package itself (editable, src-layout) ----
+# Without this, `import callbot` fails on a fresh clone (Phase 1 success criterion #1).
+echo "Installing callbot package (editable) ..."
+python -m pip install -e .
+
 # ---- Copy .env.example -> .env if missing ----
 if [ ! -f ".env" ]; then
     cp .env.example .env

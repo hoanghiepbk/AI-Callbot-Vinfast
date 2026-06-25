@@ -43,6 +43,11 @@ try {
     Write-Host "Installing requirements.txt (contract-layer deps) ..." -ForegroundColor Yellow
     & .venv\Scripts\python.exe -m pip install -r requirements.txt
 
+    # ---- Install the callbot package itself (editable, src-layout) ----
+    # Without this, `import callbot` fails on a fresh clone (Phase 1 success criterion #1).
+    Write-Host "Installing callbot package (editable) ..." -ForegroundColor Yellow
+    & .venv\Scripts\python.exe -m pip install -e .
+
     # ---- Copy .env.example -> .env if missing ----
     if (-not (Test-Path ".env")) {
         Copy-Item ".env.example" ".env"

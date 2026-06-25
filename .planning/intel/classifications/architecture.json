@@ -1,0 +1,24 @@
+{
+  "filepath": "D:/Task4/AI-Callbot-Vinfast/docs/ARCHITECTURE.md",
+  "type": "DOC",
+  "precedence": 5,
+  "manifest_override": true,
+  "confidence": "high",
+  "title": "Architecture",
+  "scope": "Describes the two-track runtime pipeline (audio/voice and dialogue) for the VinFast callbot, covering ASR, VAD, mic capture, Vietnamese normalization, and pipeline ownership boundaries between Track A and Track B.",
+  "cross_refs": [
+    "src/callbot/asr/base.py",
+    "src/callbot/tts/base.py",
+    "src/callbot/normalization/base.py",
+    "src/callbot/pipeline.py"
+  ],
+  "key_decisions": [
+    "ASR runtime: faster-whisper CT2 chosen over cloud ASR for reproducible offline demo and WER control",
+    "Turn cutting: deterministic VAD interface chosen over dialogue-aware audio heuristics to keep engine independent from audio",
+    "Normalization: per-field parser chosen over global text replacement to avoid corrupting free-text fields like names",
+    "TTS primary: Piper local chosen over edge-tts primary for offline reproducibility",
+    "RAG: not used for Phase 1 in favour of static policy and state management"
+  ],
+  "locked": false,
+  "notes": ""
+}
