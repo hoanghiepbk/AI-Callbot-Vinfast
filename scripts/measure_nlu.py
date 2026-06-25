@@ -117,6 +117,8 @@ CASES: list[dict[str, object]] = [
 
 
 def main() -> int:
+    # Windows console defaults to cp1252; we print Vietnamese, so force UTF-8.
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     client = ollama.Client(host=HOST)
     try:
         client.list()
