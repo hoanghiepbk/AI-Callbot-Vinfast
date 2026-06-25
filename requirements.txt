@@ -1,10 +1,12 @@
-# Pinned at install time — replace <pin-at-install> with the resolved stable version.
-# Append-only, keep alphabetical (WORKFLOW §5). Do NOT guess versions.
-faster-whisper==<pin-at-install>
-langchain-core==<pin-at-install>
-langgraph==<pin-at-install>
-numpy==<pin-at-install>
-ollama==<pin-at-install>
-pydantic==<pin-at-install>
-silero-vad==<pin-at-install>
-sounddevice==<pin-at-install>
+# Pinned versions verified by a clean-venv install on this machine.
+# Target runtime: Python 3.11 (TECHSTACK §3); these versions also ship 3.11 wheels.
+# Append-only, keep alphabetical (WORKFLOW §5). Canonical install = `pip install -e .`
+# (pyproject [project.dependencies]); this file is kept in sync for plain pip users.
+faster-whisper==1.2.1
+langchain-core==1.4.8
+langgraph==1.2.6
+numpy==2.5.0
+ollama==0.6.2
+pydantic==2.13.4
+silero-vad==6.2.1
+sounddevice==0.5.5

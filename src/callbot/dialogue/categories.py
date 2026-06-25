@@ -4,6 +4,7 @@ Field names follow the brief EXACTLY. `priority` ascending = asked first.
 Emergency skips fields with priority >= 90 (see BLUEPRINT §2). This module is
 data only; the next-field policy (pick_next_missing) is TASK-A11 (Wave 1).
 """
+
 from __future__ import annotations
 
 from typing import NamedTuple
@@ -26,7 +27,7 @@ CATEGORIES: dict[str, list[Field]] = {
         Field("vehicle_model", 60, True),
         Field("license_plate_vin", 70, True),
         Field("vehicle_type", 80, True),
-        Field("current_odo", 95, True),   # required; skipped when emergency (priority >= 90)
+        Field("current_odo", 95, True),  # required; skipped when emergency (priority >= 90)
     ],
     "G_2": [  # Bảo hành & Sửa chữa (Warranty & Repair)
         Field("full_name", 10, True),
@@ -56,7 +57,7 @@ CATEGORIES: dict[str, list[Field]] = {
         Field("phone", 20, True),
         Field("license_plate_vin", 30, True),
         Field("vehicle_line", 40, True),
-        Field("current_odo", 50, False),            # brief: optional
+        Field("current_odo", 50, False),  # brief: optional
         Field("vehicle_condition_details", 60, True),  # note: NOT vehicle_condition
     ],
 }

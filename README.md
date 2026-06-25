@@ -156,14 +156,25 @@ See [TECHSTACK.md](TECHSTACK.md) for full rationale and trade-offs.
 
 ## Setup
 
-> Implementation in progress. Setup steps will be finalised with the working bot.
+**Target runtime: Python 3.11** (per TECHSTACK §3 — newer versions may lack audio/ML wheels).
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env          # configure OLLAMA_HOST, model names, etc.
+.venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
+pip install -e .                # canonical: installs callbot + pinned runtime deps
+# pip install -e ".[dev]"       # add ruff / mypy / pre-commit / pytest for development
+cp .env.example .env            # configure OLLAMA_HOST, model names, etc.
 ```
+
+`requirements.txt` is kept in sync with `pyproject` for plain `pip install -r` users.
+
+### System / external dependencies (not pip)
+
+- **Ollama** — install separately and pull the model: `ollama pull qwen3:8b` (LLM runtime).
+- **PortAudio** — needed by `sounddevice` for mic I/O. Linux: `apt install libportaudio2`;
+  macOS: `brew install portaudio`; Windows: bundled with the wheel.
+- **torch** — pulled in by `silero-vad` (large download, CPU build is fine).
+- ASR weights (PhoWhisper / faster-whisper) download on first run.
 
 No credentials in code — API keys / tokens via `.env` only.
 

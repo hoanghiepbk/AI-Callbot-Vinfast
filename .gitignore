@@ -6,6 +6,9 @@ __pycache__/
 models/*.bin
 scenarios/audio/*.wav
 .DS_Store
+*.egg-info/
+build/
+dist/
 
 # Claude config — local, không commit
 CLAUDE.md

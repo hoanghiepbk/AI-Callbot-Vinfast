@@ -1,4 +1,5 @@
 """LLM interface (Protocol) and result types."""
+
 from __future__ import annotations
 
 from typing import Protocol

@@ -1,4 +1,5 @@
 """Normalizer interface (Protocol). Uses NormResult from the frozen schema contract."""
+
 from __future__ import annotations
 
 from typing import Protocol
