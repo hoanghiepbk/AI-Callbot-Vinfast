@@ -148,6 +148,7 @@ def main() -> int:
                         {"role": "user", "content": text},
                     ],
                     format=schema,
+                    think=False,  # A10 fix: thinking OFF for structured (kills empty output)
                     options={"temperature": 0},
                     keep_alive="10m",
                 )
