@@ -15,8 +15,9 @@ from pydantic import BaseModel
 
 from callbot.dialogue.categories import fields_for
 from callbot.dialogue.graph import build_graph
+from callbot.dialogue.post_call import generate_post_call
 from callbot.dialogue.state import CallState
-from callbot.models.schemas import FinalOutput, IntentSignals, PostCall, SlotStatus
+from callbot.models.schemas import FinalOutput, IntentSignals, SlotStatus
 
 if TYPE_CHECKING:
     from callbot.llm.base import LLM
@@ -33,6 +34,7 @@ class TurnResult(BaseModel):
 
 class DialogueEngine:
     def __init__(self, llm: "LLM", normalizer: "Normalizer") -> None:
+        self._llm = llm  # kept for the post-call summary at finalize()
         self._app = build_graph(llm, normalizer)
         self._state = CallState()
 
@@ -74,11 +76,7 @@ class DialogueEngine:
         else:
             for name, slot in state.slots.items():
                 fields[name] = slot.value if slot.status in _FILLED else None
-        post_call = PostCall(
-            short_summary="",  # A14 fills summary + sentiment; emergency is known now
-            sentimental_analysis="",
-            emergency="yes" if state.emergency else "no",
-        )
+        post_call = generate_post_call(self._llm, state.transcript, state)
         return FinalOutput(category=state.category, fields=fields, post_call=post_call)
 
     def reset(self) -> None:  # new call
