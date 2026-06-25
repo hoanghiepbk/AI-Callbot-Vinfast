@@ -24,7 +24,7 @@ jobs:
         # fast and avoids platform-specific ML wheel failures on the runner.
         run: |
           pip install -e . --no-deps
-          pip install pydantic==2.13.4 ollama==0.6.2 langgraph==1.2.6 langchain-core==1.4.8 ruff==0.15.19 mypy==2.1.0 pytest==9.1.1
+          pip install pydantic==2.13.4 ollama==0.6.2 langgraph==1.2.6 langchain-core==1.4.8 numpy==2.5.0 ruff==0.15.19 mypy==2.1.0 pytest==9.1.1
 
       - name: Lint (ruff)
         run: ruff check src eval tests

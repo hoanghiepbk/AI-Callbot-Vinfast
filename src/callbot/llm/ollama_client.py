@@ -24,6 +24,7 @@ from types import SimpleNamespace
 try:
     import ollama
 except ImportError:  # pragma: no cover - optional runtime dependency
+
     class _MissingOllamaClient:
         def __init__(self, *args, **kwargs) -> None:
             self.calls: list[dict] = []
@@ -35,7 +36,7 @@ except ImportError:  # pragma: no cover - optional runtime dependency
         def list(self):
             raise RuntimeError("ollama is not installed")
 
-    ollama = SimpleNamespace(Client=_MissingOllamaClient)
+    ollama = SimpleNamespace(Client=_MissingOllamaClient)  # type: ignore[assignment]
 
 from callbot import config
 from callbot.llm.base import LLMResult

@@ -80,7 +80,11 @@ def run_voice_mode(pipeline: CallbotPipeline, listen_seconds: float) -> int:
             if trimmed.size == 0:
                 print("(silence)")
                 continue
-            result = pipeline.turn(audio=trimmed, sample_rate=recorder.config.sample_rate, play_audio=True)
+            result = pipeline.turn(
+                audio=trimmed,
+                sample_rate=recorder.config.sample_rate,
+                play_audio=True,
+            )
             _print_turn(result)
             if result.done:
                 return 0
