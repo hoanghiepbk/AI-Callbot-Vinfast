@@ -78,6 +78,8 @@ process(user_text):                          # = một lượt traversal trên L
 
 > **Emergency THẮNG Readback (#6 > D10):** trong ca khẩn cấp → cấp hotline + thu *tối thiểu để điều xe* (vị trí, số gọi lại), **KHÔNG** chèn readback rườm rà; readback field định danh (phone/plate/VIN) để *sau* khi đã trấn an / điều xe. Lý do: tốc độ > độ chính xác hoàn hảo một field trong ca nguy hiểm.
 
+> **Garbled #5 vs ngắt-nghỉ số dài:** garbled #5 chỉ trigger khi giá trị **đã đọc xong** mà parse-fail — KHÔNG trigger khi VAD cắt giữa chừng số dài (khách ngập ngừng). Xử lý ngắt-nghỉ ở B12 (VAD nới timeout / gom utterance cho field `READBACK_REQUIRED`).
+
 **Post-call track** (chạy 1 lần khi `done` hoặc hangup): feed full transcript → 1 LLM call → `short_summary` + `sentimental_analysis` + `emergency`.
 
 ---

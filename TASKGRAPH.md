@@ -129,6 +129,7 @@
   - Given "không chín một hai ba bốn năm sáu bảy tám", Then `0912345678`.
   - Given "ba mươi a chấm năm sáu bảy chấm tám chín", Then chuẩn hóa biển số hợp lệ.
   - Given "không chín một" (thiếu số), Then `parse_failed=True` (→ trigger garbled #5).
+  - **Test ngắt-nghỉ:** input số dài bị tách làm 2 mảnh ("30F" rồi "1234") → sau khi gom đủ, `normalize_field("license_plate_vin", ...)` parse PASS (không `parse_failed`). Phân biệt với input *thật sự* thiếu số → `parse_failed=True`.
   - Given test suite, Then ≥15 case pass.
 - **Constraints:** Pure Python, 0 dependency engine/LLM. **Đây là differentiator — đầu tư test kỹ.**
 
@@ -144,7 +145,9 @@
 #### TASK-B12 · Mic capture + VAD `[B]`
 - **Depends:** 001 · **P0 · ~75m**
 - **Task:** `audio/recorder.py` (sounddevice, 16kHz mono) + `audio/vad.py` (silero-vad: gom audio tới ~700ms im lặng = hết lượt).
-- **Acceptance:** Given nói 1 câu rồi im, When VAD chạy, Then cắt đúng 1 utterance, trả buffer numpy.
+- **Acceptance:**
+  - Given nói 1 câu rồi im, When VAD chạy, Then cắt đúng 1 utterance, trả buffer numpy.
+  - **Số dài có ngắt nghỉ:** với field thuộc `READBACK_REQUIRED` (phone/plate/VIN), VAD KHÔNG cắt utterance sớm ở khoảng lặng ngắn giữa chừng. Cơ chế: nới silence-timeout động cho field số dài, HOẶC gom nhiều utterance vào cùng một field cho tới khi validator parse pass hoặc khách dừng hẳn. Mục tiêu: không để VAD bắn nhầm garbled (#5) khi khách chỉ đang ngập ngừng.
 - **Constraints:** Cross-platform; không phụ thuộc ASR (trả raw audio).
 
 #### TASK-B13 · Conversation corpus `[B]` (A duyệt expected)
