@@ -6,3 +6,8 @@ __pycache__/
 models/*.bin
 scenarios/audio/*.wav
 .DS_Store
+
+# Claude config — local, không commit
+CLAUDE.md
+CLAUDE.local.md
+.claude/
