@@ -263,6 +263,117 @@ def test_reset_clears_state():
     assert final.fields == {}
 
 
+# --- R1: readback must be able to CATCH a wrong value (deny detection) ---
+def _readback_script(extra: dict[str, str]) -> dict[str, str]:
+    base = {
+        "intro": nlu_payload(category="G_3"),
+        "name": nlu_payload(extracted={"full_name": "Tran Van Hung"}),
+        "phone": nlu_payload(extracted={"order_phone": "0987654321"}),
+    }
+    base.update(extra)
+    return base
+
+
+def test_readback_denial_does_not_confirm():
+    engine = _engine(_readback_script({"không đúng": nlu_payload()}))  # denial, NLU empty
+    engine.process("intro")
+    engine.process("name")
+    r3 = engine.process("phone")  # reads back order_phone
+    assert r3.state["slots"]["order_phone"]["status"] == "pending"
+
+    r4 = engine.process("không đúng")
+    assert r4.state["slots"]["order_phone"]["status"] == "pending"  # NOT confirmed
+    assert "đọc lại" in r4.reply  # asked to re-provide
+    assert engine.finalize().fields["order_phone"] is None  # wrong value not recorded
+
+
+def test_readback_correction_updates_and_rereads():
+    extra = {
+        "fix": nlu_payload(corrected={"order_phone": "0901234567"}, correction=True),
+        "yes": nlu_payload(),
+    }
+    engine = _engine(_readback_script(extra))
+    for u in ["intro", "name", "phone", "fix"]:
+        last = engine.process(u)
+
+    assert last.state["slots"]["order_phone"]["value"] == "0901234567"  # updated
+    assert last.state["slots"]["order_phone"]["status"] == "pending"  # re-readback
+    assert "0901234567" in last.reply
+    engine.process("yes")
+    assert engine.finalize().fields["order_phone"] == "0901234567"
+
+
+def test_readback_affirmation_confirms():
+    engine = _engine(_readback_script({"đúng rồi": nlu_payload()}))
+    for u in ["intro", "name", "phone", "đúng rồi"]:
+        engine.process(u)
+    assert engine.finalize().fields["order_phone"] == "0987654321"
+
+
+def test_readback_implicit_confirm_on_next_field():
+    extra = {"code": nlu_payload(extracted={"order_code_dealer": "ABC123"})}
+    engine = _engine(_readback_script(extra))
+    for u in ["intro", "name", "phone", "code"]:
+        engine.process(u)
+
+    final = engine.finalize()
+    assert final.fields["order_phone"] == "0987654321"  # implicitly confirmed
+    assert final.fields["order_code_dealer"] == "ABC123"
+
+
+def test_is_denial_keyword_detection():
+    from callbot.dialogue.graph import _is_denial
+
+    assert _is_denial("không đúng") is True
+    assert _is_denial("sai rồi") is True
+    assert _is_denial("không") is True  # bare standalone denial
+    assert _is_denial("đúng rồi") is False
+    assert _is_denial("không sao, đúng rồi ạ") is False  # embedded 'không' != denial
+
+
+# --- R5: finalize() memoizes the post-call LLM call ---
+def test_finalize_memoized_calls_post_call_llm_once():
+    class CountingLLM:
+        def __init__(self) -> None:
+            self.summary_calls = 0
+
+        def complete(self, system, user, json_schema=None) -> LLMResult:
+            if "tổng kết" in system:  # post-call summarizer
+                self.summary_calls += 1
+                text = json.dumps({"short_summary": "x", "sentimental_analysis": "calm"})
+                return LLMResult(text=text, latency_ms=0.0)
+            return LLMResult(text=nlu_payload(category="G_3"), latency_ms=0.0)
+
+    llm = CountingLLM()
+    engine = DialogueEngine(llm, VietnameseNormalizer())
+    engine.process("hi")
+    engine.finalize()
+    engine.finalize()
+    engine.finalize()
+    assert llm.summary_calls == 1  # memoized, not called 3x
+
+
+def test_finalize_cache_invalidated_by_new_turn():
+    class CountingLLM:
+        def __init__(self) -> None:
+            self.summary_calls = 0
+
+        def complete(self, system, user, json_schema=None) -> LLMResult:
+            if "tổng kết" in system:
+                self.summary_calls += 1
+                text = json.dumps({"short_summary": "x", "sentimental_analysis": "calm"})
+                return LLMResult(text=text, latency_ms=0.0)
+            return LLMResult(text=nlu_payload(category="G_3"), latency_ms=0.0)
+
+    llm = CountingLLM()
+    engine = DialogueEngine(llm, VietnameseNormalizer())
+    engine.process("hi")
+    engine.finalize()
+    engine.process("more")  # new turn invalidates the memo
+    engine.finalize()
+    assert llm.summary_calls == 2
+
+
 # --- Live smoke test (skipped without Ollama) ---
 def _ollama_up() -> bool:
     try:
