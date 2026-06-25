@@ -1,0 +1,40 @@
+[
+  {
+    "id": "g3_deposit_status",
+    "category": "G_3",
+    "turns": [
+      {"user": "Em hoi don VF6 dat coc thang truoc toi dau roi"},
+      {"user": "Ten Le Bao Chau, so dat hang khong chin sau hai mot ba bon nam sau bay"},
+      {"user": "Ma don dai ly la DL dash mot hai ba, em la khach ca nhan"}
+    ],
+    "expected": {
+      "category": "G_3",
+      "fields": {
+        "full_name": "Le Bao Chau",
+        "order_phone": "0962134567",
+        "order_code_dealer": "DL-123",
+        "customer_type": "ca nhan"
+      },
+      "signals": {"emergency": false}
+    }
+  },
+  {
+    "id": "g3_company_delivery",
+    "category": "G_3",
+    "turns": [
+      {"user": "Cong ty toi can kiem tra lich giao xe VF9"},
+      {"user": "Nguyen Quoc Bao, dien thoai don hang khong tam ba hai mot bon nam sau bay tam"},
+      {"user": "Dai ly Landmark, ma HD khong khong bay, khach doanh nghiep"}
+    ],
+    "expected": {
+      "category": "G_3",
+      "fields": {
+        "full_name": "Nguyen Quoc Bao",
+        "order_phone": "0832145678",
+        "order_code_dealer": "HD007 Landmark",
+        "customer_type": "doanh nghiep"
+      },
+      "signals": {"emergency": false}
+    }
+  }
+]

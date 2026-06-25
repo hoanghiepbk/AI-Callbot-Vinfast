@@ -1,0 +1,46 @@
+[
+  {
+    "id": "g2_battery_warning",
+    "category": "G_2",
+    "turns": [
+      {"user": "Minh muon dat lich bao hanh, xe VF8 bao loi pin"},
+      {"user": "Chu xe Tran Minh, so khong chin khong ba bon nam sau bay tam chin"},
+      {"user": "Xe ca nhan, bien ba muoi h mot hai ba bon nam, em muon den VinFast Long Bien"}
+    ],
+    "expected": {
+      "category": "G_2",
+      "fields": {
+        "full_name": "Tran Minh",
+        "owner_phone": "0903456789",
+        "vehicle_model": "VF8",
+        "vehicle_usage_type": "ca nhan",
+        "license_plate_vin": "30H-12345",
+        "service_center": "VinFast Long Bien",
+        "vehicle_condition": "bao loi pin"
+      },
+      "signals": {"emergency": false}
+    }
+  },
+  {
+    "id": "g2_noisy_repair_request",
+    "category": "G_2",
+    "turns": [
+      {"user": "Xe em keu o gam, hoi kho chiu, can sua som"},
+      {"user": "Em la Hoang Anh, so chu xe khong tam sau bay nam bon ba hai mot khong"},
+      {"user": "VF5 chay dich vu, bien nam mot k sau bay tam chin khong, trung tam Thu Duc cung duoc"}
+    ],
+    "expected": {
+      "category": "G_2",
+      "fields": {
+        "full_name": "Hoang Anh",
+        "owner_phone": "0867543210",
+        "vehicle_model": "VF5",
+        "vehicle_usage_type": "dich vu",
+        "license_plate_vin": "51K-67890",
+        "service_center": "Thu Duc",
+        "vehicle_condition": "keu o gam"
+      },
+      "signals": {"emergency": false}
+    }
+  }
+]

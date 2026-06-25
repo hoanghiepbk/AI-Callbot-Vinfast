@@ -1,0 +1,43 @@
+[
+  {
+    "id": "g5_app_pairing",
+    "category": "G_5",
+    "turns": [
+      {"user": "App VinFast cua em khong ket noi duoc xe"},
+      {"user": "Em la Mai Anh, so khong chin tam bon nam sau bay mot hai ba"},
+      {"user": "Xe VF8, bien ba muoi a chin tam bay sau nam, odo tam nghin cay"}
+    ],
+    "expected": {
+      "category": "G_5",
+      "fields": {
+        "full_name": "Mai Anh",
+        "phone": "0984567123",
+        "license_plate_vin": "30A-98765",
+        "vehicle_line": "VF8",
+        "current_odo": "8000",
+        "vehicle_condition_details": "app khong ket noi duoc xe"
+      },
+      "signals": {"emergency": false}
+    }
+  },
+  {
+    "id": "g5_software_update",
+    "category": "G_5",
+    "turns": [
+      {"user": "Man hinh xe bao cap nhat that bai hoai"},
+      {"user": "Ten Khanh, so khong tam bay sau nam bon ba hai mot khong"},
+      {"user": "VF e34, VIN V F ba A B C D E F mot hai ba bon nam sau bay"}
+    ],
+    "expected": {
+      "category": "G_5",
+      "fields": {
+        "full_name": "Khanh",
+        "phone": "0876543210",
+        "license_plate_vin": "VF3ABCDEF1234567",
+        "vehicle_line": "VF e34",
+        "vehicle_condition_details": "cap nhat that bai"
+      },
+      "signals": {"emergency": false}
+    }
+  }
+]

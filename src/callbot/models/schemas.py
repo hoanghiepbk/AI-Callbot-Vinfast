@@ -73,7 +73,9 @@ READBACK_REQUIRED = {"phone", "owner_phone", "order_phone", "license_plate_vin"}
 # ---- Field validators (D3): True = parses OK; False => parse_failed -> garbled (#5) ----
 _PHONE_FIELDS = {"phone", "owner_phone", "order_phone"}
 _VIN_RE = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")  # VIN: 17 chars, excludes I/O/Q
-_PLATE_RE = re.compile(r"^\d{2}[A-Z]{1,2}[-\s]?\d{3}\.?\d{2}$")  # VN plate, e.g. 30A-567.89
+_PLATE_RE = re.compile(
+    r"^\d{2}[A-Z]{1,2}[-\s]?(?:\d{4,5}|\d{3}\.?\d{2})$"
+)  # VN plate, e.g. 30A-567.89 or 30F-1234
 
 
 def validate_field(name: str, value: str | None) -> bool:

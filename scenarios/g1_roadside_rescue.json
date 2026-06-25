@@ -1,0 +1,49 @@
+[
+  {
+    "id": "g1_emergency_highway_hesitation",
+    "category": "G_1",
+    "turns": [
+      {"user": "Anh oi xe em chet may tren cao toc Ha Noi Hai Phong, dang dung sat lan khan cap"},
+      {"user": "Em o gan cot km 32, huong di Hai Phong"},
+      {"user": "So em khong chin mot hai ba bon nam sau bay tam"},
+      {"user": "Em la Nguyen Van Nam, xe VF e34, bien ba muoi a cham nam sau bay cham tam chin"}
+    ],
+    "expected": {
+      "category": "G_1",
+      "fields": {
+        "current_location": "gan cot km 32, huong di Hai Phong",
+        "vehicle_condition": "chet may tren cao toc",
+        "phone": "0912345678",
+        "city_name": "Hai Phong",
+        "full_name": "Nguyen Van Nam",
+        "vehicle_model": "VF e34",
+        "license_plate_vin": "30A-567.89",
+        "vehicle_type": "oto"
+      },
+      "signals": {"emergency": true}
+    }
+  },
+  {
+    "id": "g1_tire_flat_city",
+    "category": "G_1",
+    "turns": [
+      {"user": "Xe Lux A cua chi bi xit lop o Nguyen Trai, Quan 5"},
+      {"user": "Chi ten Thao, so khong tam tam nam hai ba bon nam sau bay"},
+      {"user": "Bien so nam mot f mot hai ba bon nam, odo khoang hai muoi nghin"}
+    ],
+    "expected": {
+      "category": "G_1",
+      "fields": {
+        "current_location": "Nguyen Trai, Quan 5",
+        "vehicle_condition": "xit lop",
+        "phone": "0885234567",
+        "city_name": "TP HCM",
+        "full_name": "Thao",
+        "vehicle_model": "Lux A",
+        "license_plate_vin": "51F-12345",
+        "current_odo": "20000"
+      },
+      "signals": {"emergency": false}
+    }
+  }
+]

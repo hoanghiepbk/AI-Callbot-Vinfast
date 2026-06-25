@@ -1,0 +1,44 @@
+[
+  {
+    "id": "g4_klara_warranty",
+    "category": "G_4",
+    "turns": [
+      {"user": "Xe may dien Klara cua em sac khong vao"},
+      {"user": "Em ten Phuong, so khong chin ba bay sau nam bon ba hai mot"},
+      {"user": "Bien nam chín b mot hai ba bon nam, em o Go Vap"}
+    ],
+    "expected": {
+      "category": "G_4",
+      "fields": {
+        "full_name": "Phuong",
+        "phone": "0937654321",
+        "vehicle_line": "Klara",
+        "license_plate_vin": "59B-12345",
+        "current_location": "Go Vap",
+        "vehicle_condition": "sac khong vao"
+      },
+      "signals": {"emergency": false}
+    }
+  },
+  {
+    "id": "g4_feliz_noise",
+    "category": "G_4",
+    "turns": [
+      {"user": "Con Feliz cua anh dang chay bi giat giat"},
+      {"user": "Anh la Dung, so khong tam chin mot hai ba bon nam sau bay"},
+      {"user": "Bien so ba muoi m sau bay tam chin khong, hien o Cau Giay"}
+    ],
+    "expected": {
+      "category": "G_4",
+      "fields": {
+        "full_name": "Dung",
+        "phone": "0891234567",
+        "vehicle_line": "Feliz",
+        "license_plate_vin": "30M-67890",
+        "current_location": "Cau Giay",
+        "vehicle_condition": "chay bi giat"
+      },
+      "signals": {"emergency": false}
+    }
+  }
+]

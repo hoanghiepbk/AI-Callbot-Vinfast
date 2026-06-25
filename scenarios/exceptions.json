@@ -1,0 +1,46 @@
+[
+  {
+    "id": "ex_correction_phone",
+    "type": "correction",
+    "turns": [
+      {"user": "So em la khong chin mot hai ba bon nam sau bay tam"},
+      {"user": "A khong phai, so dung la khong chin mot hai ba bon nam sau bay chin"}
+    ],
+    "expected": {
+      "signals": {"correction": true},
+      "corrected_fields": {"phone": "0912345679"}
+    }
+  },
+  {
+    "id": "ex_ambiguous_intent",
+    "type": "ambiguous",
+    "turns": [
+      {"user": "Alo cho em hoi xe VinFast cua em co van de chut"}
+    ],
+    "expected": {
+      "category": null,
+      "signals": {"out_of_scope": false}
+    }
+  },
+  {
+    "id": "ex_garbled_plate",
+    "type": "garbled",
+    "turns": [
+      {"user": "Bien xe em la ba muoi a"}
+    ],
+    "expected": {
+      "fields": {"license_plate_vin": "30A"},
+      "parse_failed": true
+    }
+  },
+  {
+    "id": "ex_calm_emergency",
+    "type": "emergency",
+    "turns": [
+      {"user": "Anh oi xe em dung giua duong vanh dai, troi toi qua, xe khong no duoc"}
+    ],
+    "expected": {
+      "signals": {"emergency": true}
+    }
+  }
+]
