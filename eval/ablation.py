@@ -20,11 +20,14 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
+from pydantic import ValidationError
+
 from callbot.dialogue import extraction, graph
 from callbot.dialogue.engine import DialogueEngine
 from callbot.llm import ollama_client
 from callbot.llm.base import LLMResult
-from callbot.llm.ollama_client import OllamaClient
+from callbot.llm.ollama_client import OllamaClient, _is_usable
+from callbot.models.schemas import NLUResult
 from callbot.normalization.vietnamese_numbers import VietnameseNormalizer
 from eval.harness import ScenarioResult, load_scenarios, run_all
 from eval.latency import _percentile
@@ -209,6 +212,64 @@ def template_latency(
     return _percentile(template_ms, 50), _percentile(llm_reply_ms, 50)
 
 
+# ----------------------------------------------------- ablation 1b: think FIRST-ATTEMPT
+# Hard calm-emergency utterances: real danger but spoken calmly. The first three carry NO
+# emergency keyword, so the engine's keyword backstop cannot help — only the LLM flag can —
+# and we bypass retry, isolating exactly what think=False buys at the raw NLU layer.
+_CALM_CASES = [
+    "xe em đang đứng yên giữa làn đường đông xe mà không đi tiếp được nữa",
+    "em đang ngồi trong xe bị kẹt cứng không mở cửa ra được",
+    "xe em dừng lại giữa đường mà đề mãi máy không khởi động lại được",
+    "xe em đỗ giữa cao tốc không nổ được",
+    "xe em mất phanh đang trôi tự do xuống dốc",
+]
+_FIRST_ATTEMPT_RUNS = 5
+
+
+def _rate(part: int, whole: int) -> float:
+    return round(100.0 * part / whole, 1) if whole else 0.0
+
+
+def measure_think_first_attempt(runs: int = _FIRST_ATTEMPT_RUNS) -> dict[str, Any]:
+    """Per-call, retry-OFF NLU on hard calm cases: % JSON-empty and % emergency caught on the
+    FIRST attempt, for think=True vs think=False. This is what retry (A10) hides at the system
+    level."""
+    client = OllamaClient()
+    system = extraction.build_system(None)
+    schema = extraction._SCHEMA
+    out: dict[str, Any] = {"runs_per_case": runs, "cases": len(_CALM_CASES)}
+    for think in (True, False):
+        empty = caught = total = 0
+        for case in _CALM_CASES:
+            messages = [
+                {"role": "system", "content": system},
+                {"role": "user", "content": case},
+            ]
+            kwargs = {
+                "keep_alive": ollama_client._KEEP_ALIVE,
+                "format": schema,
+                "think": think,
+                "options": {"temperature": 0},
+            }
+            for _ in range(runs):
+                text = client._call_once(messages, kwargs)  # ONE call, no retry
+                total += 1
+                if not _is_usable(text):
+                    empty += 1
+                    continue
+                try:
+                    if NLUResult.model_validate_json(text).signals.emergency:
+                        caught += 1
+                except ValidationError:
+                    empty += 1
+        out["think_true" if think else "think_false"] = {
+            "json_empty_pct": _rate(empty, total),
+            "calm_recall_first_attempt_pct": _rate(caught, total),
+            "total_calls": total,
+        }
+    return out
+
+
 # --------------------------------------------------------------------------- summaries
 def _emergency(results: list[ScenarioResult]) -> tuple[float, float]:
     m = emergency_metric(results)
@@ -272,6 +333,7 @@ def run_ablations() -> dict[str, Any]:
                 "latency_p50_ms": round(llm_reply_p50, 1),
                 "delta_ms": round(llm_reply_p50 - template_p50, 1),
             },
+            "think_first_attempt": measure_think_first_attempt(),
         },
     }
 
@@ -319,14 +381,36 @@ def _print_table(data: dict[str, Any]) -> None:
     ]
     for name, metric, full, off, delta in rows:
         print(f"{name:22} {metric:24} {full:>8} {off:>8} {delta:>8}")
+    _print_first_attempt(data["ablations"].get("think_first_attempt"))
+
+
+def _print_first_attempt(fa: dict[str, Any] | None) -> None:
+    if not fa or "think_true" not in fa:
+        return
+    t, f = fa["think_true"], fa["think_false"]
+    print(f"\nthink FIRST-ATTEMPT (retry OFF, {fa['cases']} calm cases x{fa['runs_per_case']}):")
+    print(f"{'':22} {'metric':28} {'think=True':>11} {'think=False':>12}")
+    print(f"{'':22} {'JSON-empty %':28} {t['json_empty_pct']:>11} {f['json_empty_pct']:>12}")
+    print(
+        f"{'':22} {'calm recall first-attempt %':28} "
+        f"{t['calm_recall_first_attempt_pct']:>11} {f['calm_recall_first_attempt_pct']:>12}"
+    )
 
 
 def main() -> int:
     import sys
 
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-    data = run_ablations()
-    _print_table(data)
+    argv = sys.argv[1:]
+    if argv and argv[0] == "firstattempt":
+        # Merge ONLY the first-attempt measurement into the existing results (skip the heavy
+        # 4 full-golden passes, which are already recorded).
+        data = json.loads(_RESULTS_PATH.read_text(encoding="utf-8"))
+        data["ablations"]["think_first_attempt"] = measure_think_first_attempt()
+        _print_first_attempt(data["ablations"]["think_first_attempt"])
+    else:
+        data = run_ablations()
+        _print_table(data)
     _RESULTS_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nWrote {_RESULTS_PATH}")
     return 0

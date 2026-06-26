@@ -6,11 +6,14 @@ These never touch Ollama — the real-Ollama measurement runs via `python -m eva
 from __future__ import annotations
 
 from callbot.dialogue import extraction, graph
+from callbot.dialogue.graph import _keyword_emergency
 from callbot.llm.base import LLMResult
 from eval.ablation import (
+    _CALM_CASES,
     _json_valid_pct,
     _JSONCount,
     _no_glossary_build_system,
+    _rate,
     counting_factory,
     glossary_off,
     keyword_off,
@@ -69,3 +72,15 @@ def test_counting_factory_shares_stats_across_clients():
 
 def test_json_valid_pct_handles_empty():
     assert _json_valid_pct({"total": 0, "valid": 0}) == 0.0
+
+
+def test_rate_helper():
+    assert _rate(3, 4) == 75.0
+    assert _rate(0, 0) == 0.0  # no division by zero
+
+
+def test_first_three_calm_cases_have_no_emergency_keyword():
+    # The first-attempt test isolates the LLM flag, so the leading calm cases must carry no
+    # keyword the engine backstop could otherwise catch.
+    for case in _CALM_CASES[:3]:
+        assert not _keyword_emergency(case)
