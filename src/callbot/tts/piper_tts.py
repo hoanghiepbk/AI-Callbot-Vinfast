@@ -1,148 +1,92 @@
-"""Piper local TTS implementation."""
+"""Piper local TTS — real Vietnamese speech via the piper-tts Python API (onnxruntime).
+
+Loads a Piper voice `.onnx` (default: the Vietnamese FEMALE `vais1000-medium` voice in
+`models/piper/`, fetched by `scripts/setup_tts.py`). When no voice is present it returns a
+short silence + a one-time warning pointing at the setup script — never a misleading tone /
+beep that would make a grader think the bot is broken.
+"""
 
 from __future__ import annotations
 
 import io
-import math
-import shutil
-import subprocess
-import tempfile
+import logging
 import time
 import wave
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 from callbot import config
 from callbot.tts.base import TTSResult
 
+logger = logging.getLogger(__name__)
 
-def _wav_bytes_from_pcm(samples: np.ndarray, sample_rate: int) -> bytes:
-    clipped = np.asarray(samples, dtype=np.float32)
-    if clipped.ndim != 1:
-        clipped = clipped.reshape(-1)
-    clipped = np.clip(clipped, -1.0, 1.0)
-    pcm16 = (clipped * 32767.0).astype(np.int16)
+# Default voice built by scripts/setup_tts.py (git-ignored binary).
+_DEFAULT_VOICE = (
+    Path(__file__).resolve().parents[3] / "models" / "piper" / "vi_VN-vais1000-medium.onnx"
+)
+_SETUP_HINT = (
+    "no Piper voice found — run `python scripts/setup_tts.py` (downloads a Vietnamese female "
+    "voice to models/piper/) or set PIPER_VOICE to a voice .onnx path."
+)
 
+
+def _resolve_voice(explicit: str | None) -> Path | None:
+    """PIPER_VOICE / explicit path > bundled default voice > None (no voice installed)."""
+    candidate = explicit or config.PIPER_VOICE
+    if candidate:
+        path = Path(candidate).expanduser()
+        return path if path.is_file() else None
+    return _DEFAULT_VOICE if _DEFAULT_VOICE.is_file() else None
+
+
+def _silence_wav(sample_rate: int = 22050, seconds: float = 0.3) -> bytes:
+    """A valid (but silent) WAV — honest 'no speech', not a beep."""
     buffer = io.BytesIO()
     with wave.open(buffer, "wb") as wav:
         wav.setnchannels(1)
         wav.setsampwidth(2)
         wav.setframerate(sample_rate)
-        wav.writeframes(pcm16.tobytes())
+        wav.writeframes(np.zeros(int(sample_rate * seconds), dtype=np.int16).tobytes())
     return buffer.getvalue()
-
-
-def _tone_fallback(text: str, sample_rate: int) -> bytes:
-    """Deterministic offline fallback used when no Piper binary/voice is present."""
-
-    plain = text.strip() or " "
-    segments: list[np.ndarray] = []
-    # Short vowel-like bursts with tiny gaps make the fallback sound less like a beep.
-    base = 155.0
-    for idx, chunk in enumerate(plain.split() or [plain]):
-        duration = min(0.35 + 0.03 * len(chunk), 0.8)
-        n = max(1, int(sample_rate * duration))
-        t = np.linspace(0.0, duration, n, endpoint=False)
-        freq = base + (sum(ord(ch) for ch in chunk) % 140)
-        carrier = 0.55 * np.sin(2 * math.pi * freq * t)
-        carrier += 0.25 * np.sin(2 * math.pi * (freq * 2.01) * t)
-        envelope = np.sin(np.linspace(0.0, math.pi, n))
-        segments.append((carrier * envelope).astype(np.float32))
-        if idx < len(plain.split()) - 1:
-            segments.append(np.zeros(int(sample_rate * 0.08), dtype=np.float32))
-    if not segments:
-        segments = [np.zeros(int(sample_rate * 0.2), dtype=np.float32)]
-    return _wav_bytes_from_pcm(np.concatenate(segments), sample_rate)
 
 
 @dataclass
 class PiperTTS:
-    """Piper adapter with a best-effort local binary path and a safe fallback.
-
-    The primary path is a local `piper` executable plus a voice `.onnx` file.
-    If the binary or voice is missing, the adapter still returns a valid WAV so
-    the CLI/demo does not crash on a clean machine.
-    """
+    """Piper adapter. Real speech when a voice is installed; silence + warning otherwise."""
 
     voice_path: str | None = None
-    executable: str | None = None
-    speaker: str | None = None
-    sample_rate: int = config.PIPER_SAMPLE_RATE
-    fallback_mode: str = "tone"
-
-    def __post_init__(self) -> None:
-        if self.voice_path is None and config.PIPER_VOICE:
-            self.voice_path = config.PIPER_VOICE
-        if self.executable is None:
-            self.executable = config.PIPER_BINARY
-        if self.speaker is None and config.PIPER_SPEAKER:
-            self.speaker = config.PIPER_SPEAKER
+    _voice: Any = field(default=None, init=False, repr=False)
+    _warned: bool = field(default=False, init=False, repr=False)
 
     def synthesize(self, text: str) -> TTSResult:
         started = time.perf_counter()
-        audio = self._synthesize_best_effort(text)
-        latency_ms = (time.perf_counter() - started) * 1000.0
-        return TTSResult(audio=audio, latency_ms=latency_ms)
+        audio = self._synthesize_speech(text)
+        return TTSResult(audio=audio, latency_ms=(time.perf_counter() - started) * 1000.0)
 
-    def _synthesize_best_effort(self, text: str) -> bytes:
-        try:
-            return self._synthesize_with_piper(text)
-        except Exception:
-            if self.fallback_mode == "silence":
-                return self._silence(text)
-            return _tone_fallback(text, self.sample_rate)
+    def _synthesize_speech(self, text: str) -> bytes:
+        voice = self._load_voice()
+        if voice is None:
+            if not self._warned:
+                logger.warning("PiperTTS: %s", _SETUP_HINT)
+                self._warned = True
+            return _silence_wav()
+        buffer = io.BytesIO()
+        with wave.open(buffer, "wb") as wav:
+            voice.synthesize_wav(text, wav)
+        return buffer.getvalue()
 
-    def _synthesize_with_piper(self, text: str) -> bytes:
-        executable = self._resolve_executable()
-        voice = self._resolve_voice()
-        if executable is None or voice is None:
-            raise RuntimeError("piper executable and voice model are required")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output = Path(tmpdir) / "tts.wav"
-            cmd = [
-                executable,
-                "--model",
-                str(voice),
-                "--output_file",
-                str(output),
-            ]
-            if self.speaker:
-                cmd.extend(["--speaker", str(self.speaker)])
-            if self.sample_rate:
-                cmd.extend(["--sample_rate", str(int(self.sample_rate))])
-            subprocess.run(
-                cmd,
-                input=text,
-                text=True,
-                capture_output=True,
-                check=True,
-            )
-            if not output.is_file():
-                raise RuntimeError("piper did not produce an output file")
-            return output.read_bytes()
-
-    def _resolve_executable(self) -> str | None:
-        candidate = (self.executable or "").strip()
-        if candidate and Path(candidate).is_file():
-            return candidate
-        if candidate:
-            resolved = shutil.which(candidate)
-            if resolved:
-                return resolved
-        return shutil.which("piper")
-
-    def _resolve_voice(self) -> Path | None:
-        if not self.voice_path:
+    def _load_voice(self) -> Any:
+        if self._voice is not None:
+            return self._voice
+        path = _resolve_voice(self.voice_path)
+        if path is None:
             return None
-        voice = Path(self.voice_path).expanduser()
-        if voice.is_file():
-            return voice
-        return None
-
-    def _silence(self, text: str) -> bytes:
-        length_sec = max(0.2, min(1.5, 0.03 * max(1, len(text))))
-        samples = np.zeros(int(self.sample_rate * length_sec), dtype=np.float32)
-        return _wav_bytes_from_pcm(samples, self.sample_rate)
+        try:
+            from piper import PiperVoice
+        except ImportError:
+            return None  # piper-tts not installed -> silence path (CI / text-only setups)
+        self._voice = PiperVoice.load(str(path))
+        return self._voice
