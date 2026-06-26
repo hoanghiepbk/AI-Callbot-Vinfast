@@ -111,7 +111,7 @@ flags the LLM extracts:
 
 ---
 
-## Planned Project Structure
+## Project Structure
 
 ```
 src/callbot/
@@ -129,8 +129,8 @@ src/callbot/
   utils/             # logging, latency
 scenarios/           # evaluation fixtures (turn-by-turn) + audio clips
 tests/               # pytest unit/exception tests
-eval/                # eval runner + metrics + report template
-docs/                # ARCHITECTURE.md, EVALUATION_REPORT.md
+eval/                # eval runner + metrics + ablation + WER (results committed)
+docs/                # ARCHITECTURE.md, eval_report.md, exceptions.md
 ```
 
 ---
@@ -160,13 +160,15 @@ See [TECHSTACK.md](TECHSTACK.md) for full rationale and trade-offs.
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
-pip install -e .                # canonical: installs callbot + pinned runtime deps
-# pip install -e ".[dev]"       # add ruff / mypy / pre-commit / pytest for development
-cp .env.example .env            # configure OLLAMA_HOST, model names, etc.
+.venv\Scripts\activate                 # Linux/macOS: source .venv/bin/activate
+pip install -e ".[dev]"                # callbot + pinned runtime + eval/dev tools (jiwer, pytest…)
+# pip install -e .                      # runtime only (no eval/dev tooling)
+cp .env.example .env                    # configure OLLAMA_HOST, model names, etc.
 ```
 
-`requirements.txt` is kept in sync with `pyproject` for plain `pip install -r` users.
+All dependencies are pinned with `==` in [pyproject.toml](pyproject.toml). Verified from a
+clean Python 3.11 venv: `pip install -e ".[dev]"` exits 0 and `python -m eval.run_eval`
+prints metrics (see [docs/eval_report.md](docs/eval_report.md)).
 
 ### System / external dependencies (not pip)
 
@@ -180,6 +182,41 @@ No credentials in code — API keys / tokens via `.env` only.
 
 ---
 
+## Run
+
+```bash
+python -m callbot.main --text                 # text dialogue (type caller utterances)
+python -m callbot.main --voice                # voice dialogue (mic in, TTS out)
+python -m callbot.main --gradio               # Gradio web demo
+```
+
+Text mode needs only Ollama running. Voice mode additionally needs a microphone, ASR
+weights, and a TTS engine (`TTS_ENGINE=none` for text-only output).
+
+## Eval
+
+```bash
+python -m eval.run_eval                        # scripted: routing, slot-F1, emergency (no Ollama)
+python -m eval.run_eval --ollama               # real LLM extraction + real per-stage latency
+python -m eval.ablation                        # ablation study (real Ollama)
+python -m eval.run_wer                          # WER/CER on the audio set (needs jiwer + ASR_MODEL)
+```
+
+Scripted eval is deterministic and needs no Ollama. Results land in `eval/results.json`
+(+ committed `eval/results_snapshot.json`, `eval/ablation_results.json`,
+`eval/wer_results.json`). Full numbers + methodology: [docs/eval_report.md](docs/eval_report.md).
+
+### Audio / WER (B14)
+
+Raw `*.wav` recordings are **not** committed (real voices + size). The reference transcripts
+(`scenarios/audio/manifest.json`), per-clip results (`eval/wer_results.json`) and the runner
+(`eval/run_wer.py`) are committed so WER/CER stays verifiable. To reproduce on your own audio,
+see [scenarios/audio/README.md](scenarios/audio/README.md).
+
+---
+
 ## Status
 
-Planning and design complete (see documents above). Implementation pending.
+Dialogue core, exception handling, evaluation suite (eval + ablation + WER) implemented and
+green on the lean CI gate. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
+[docs/eval_report.md](docs/eval_report.md).
