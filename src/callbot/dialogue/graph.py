@@ -73,6 +73,16 @@ def _is_denial(text: str) -> bool:
     return any(phrase in low for phrase in _DENY_PHRASES)
 
 
+# Social greeting / call-opener — handled deterministically so an opening "chào em / alo"
+# is greeted back, NOT treated as a no-progress (stuck) turn that escalates to a human (#7).
+_GREETINGS = ("chào", "alo", "a lô", "a lo", "xin chào", "hello")
+
+
+def _is_greeting(text: str) -> bool:
+    low = text.strip().lower()
+    return low in {"hi", "hey"} or any(g in low for g in _GREETINGS)
+
+
 def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
     """Compile the turn-loop graph with llm/normalizer injected into the nodes."""
 
@@ -177,7 +187,9 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
         return {"current_field": nf.name if nf is not None else None}
 
     def stuck_check(state: CallState) -> dict[str, Any]:
-        failed = state.turn_failed or state.need_clarify
+        # A bare greeting is a clarify turn but NOT "stuck" — never let it count toward (#7).
+        clarify_failed = state.need_clarify and not _is_greeting(state.user_text)
+        failed = state.turn_failed or clarify_failed
         failed_turns = state.failed_turns + 1 if failed else 0
         return {"failed_turns": failed_turns, "offer_human": failed_turns >= 2}
 
@@ -206,7 +218,9 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
                 return out(tmpl.readback_denied(state.pending_field, ti))
             value = state.slots[state.pending_field].value or ""
             return out(tmpl.readback(state.pending_field, value, ti))
-        if state.need_clarify:  # (#3) ambiguous
+        if state.need_clarify:  # greeting -> greet back; otherwise (#3) ambiguous -> clarify
+            if _is_greeting(state.user_text):
+                return out(tmpl.greeting(ti))
             return out(tmpl.clarify(ti))
         if state.current_field is not None:
             return out(tmpl.ask_field(state.current_field, ti))
