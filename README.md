@@ -188,6 +188,19 @@ weights are git-ignored. To skip PhoWhisper, set `ASR_MODEL=medium` (generic fas
 > Audio for `pipeline.turn(audio=…)` must be **16 kHz mono** (live mic capture already is;
 > `from_file()` handles other rates, so WER on 48 kHz clips works).
 
+### GPU acceleration (optional, big latency win)
+
+On an NVIDIA GPU, run ASR + LLM on the device:
+
+```bash
+pip install -e ".[gpu]"        # CUDA 12 runtime DLLs for ctranslate2 (cublas/cudnn/cudart)
+# .env: ASR_DEVICE=cuda  ASR_COMPUTE_TYPE=float16
+```
+
+`FasterWhisperASR` auto-adds the bundled CUDA DLLs to PATH (Windows) — no system CUDA toolkit
+needed. Ollama uses the GPU automatically (`ollama ps` shows `100% GPU`). Measured on an
+RTX 5070 (Blackwell, driver CUDA 13.1), voice E2E per turn dropped from **~8.9 s (CPU)** to
+**~1.4 s p50 (GPU)**: ASR 5984→489 ms, LLM 2934→948 ms.
 ### Setup TTS voice (for spoken replies, +5 pts)
 
 The bot speaks with a real Vietnamese **female** Piper voice (`vi_VN-vais1000-medium`).
