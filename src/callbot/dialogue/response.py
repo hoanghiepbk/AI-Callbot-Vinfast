@@ -63,6 +63,16 @@ def readback_denied(field: str, turn_index: int) -> str:
     return f"Dạ em ghi chưa đúng, anh/chị đọc lại {_label(field)} giúp em ạ."
 
 
+_GREETING_SHELLS = [
+    "Dạ em chào anh/chị ạ. Anh/chị cần em hỗ trợ vấn đề gì ạ?",
+    "Dạ vâng em nghe ạ. Anh/chị đang cần em hỗ trợ gì ạ?",
+]
+
+
+def greeting(turn_index: int) -> str:
+    return _GREETING_SHELLS[turn_index % len(_GREETING_SHELLS)]
+
+
 def clarify(turn_index: int) -> str:
     return "Dạ anh/chị đang cần em hỗ trợ vấn đề gì để em phục vụ ạ?"
 
