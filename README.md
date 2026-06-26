@@ -231,11 +231,19 @@ No credentials in code — API keys / tokens via `.env` only.
 ```bash
 python -m callbot.main --text                 # text dialogue (type caller utterances)
 python -m callbot.main --voice                # voice dialogue (mic in, TTS out)
-python -m callbot.main --gradio               # Gradio web demo
+python -m callbot.main --gradio               # Gradio web demo (localhost)
+python -m callbot.main --gradio --share       # public HTTPS link — demo from a phone/laptop
+python -m callbot.main --gradio --host 0.0.0.0 --port 7860   # LAN access
 ```
 
 Text mode needs only Ollama running. Voice mode additionally needs a microphone, ASR
 weights, and a TTS engine (`TTS_ENGINE=none` for text-only output).
+
+**Demo from another device** (e.g. run on a GPU PC, present from a laptop): launch on the PC
+with `--gradio --share`, then open the printed `*.gradio.live` link on the other device — the
+PC does all the ASR/LLM/TTS work, the laptop just needs a browser. The mic works because the
+share link is HTTPS (browsers block mic on plain-HTTP LAN URLs; for `--host` LAN use, type text
+instead or enable the browser's insecure-origin flag).
 
 ## Eval
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Sequence
+from typing import Any, Sequence
 
 from callbot.audio.recorder import MicrophoneRecorder
 from callbot.audio.vad import EnergyVAD
@@ -23,6 +23,22 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=4.0,
         help="Seconds to record per voice turn",
+    )
+    parser.add_argument(
+        "--share",
+        action="store_true",
+        help="Gradio: expose a public share link (demo from a phone/laptop, mic works over HTTPS)",
+    )
+    parser.add_argument(
+        "--host",
+        default=None,
+        help="Gradio: bind address, e.g. 0.0.0.0 for LAN access",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Gradio: server port (default 7860)",
     )
     return parser
 
@@ -104,7 +120,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not demo.available:
             print("gradio is not installed")
             return 1
-        demo.launch()
+        launch_kwargs: dict[str, Any] = {}
+        if args.share:
+            launch_kwargs["share"] = True
+        if args.host:
+            launch_kwargs["server_name"] = args.host
+        if args.port:
+            launch_kwargs["server_port"] = args.port
+        demo.launch(**launch_kwargs)
         return 0
 
     pipeline = CallbotPipeline.from_env(auto_play=bool(args.voice), include_asr=bool(args.voice))
