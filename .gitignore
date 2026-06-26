@@ -5,6 +5,12 @@ __pycache__/
 *.onnx
 models/*.bin
 scenarios/audio/*.wav
+# Raw recordings (real voices, heavy) are private — never commit audio binaries.
+# Transcripts (.reference.txt), scenarios/audio/manifest.json and eval/wer_results.json
+# stay committed so WER/CER remain verifiable + reproducible without the raw audio.
+audio/*.wav
+audio/*.mp3
+audio/*.m4a
 .DS_Store
 *.egg-info/
 build/

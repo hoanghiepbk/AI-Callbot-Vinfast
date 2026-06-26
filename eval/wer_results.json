@@ -1,0 +1,102 @@
+{
+  "name": "wer",
+  "status": "ok",
+  "files": 13,
+  "wer": 0.2166,
+  "cer": 0.1665,
+  "per_file": [
+    {
+      "audio": "audio/voice1.wav",
+      "category": "G_1",
+      "asr_output": "alo anh ơi xe em chết máy ở cao tốc long thành dầu giây biển số ba mươi a bốn năm sáu bảy tám model vf8.",
+      "wer": 0.1111,
+      "cer": 0.0472
+    },
+    {
+      "audio": "audio/voice2.wav",
+      "category": "G_1",
+      "asr_output": "em đỗ ở giữa đường không nổ máy được vị trí ở gần ngã tư phạm văn đồng số em là không chín tám hai ba bốn năm sáu bảy tám.",
+      "wer": 0.069,
+      "cer": 0.0342
+    },
+    {
+      "audio": "audio/voice3.wav",
+      "category": "G_2",
+      "asr_output": "tên em là nguyễn thị phương xe vf chính của em hết hạn bỏ hành chưa ạ biển ba mươi gờ một hai ba bốn năm.",
+      "wer": 0.2,
+      "cer": 0.11
+    },
+    {
+      "audio": "audio/voice4.wav",
+      "category": "G_3",
+      "asr_output": "em muốn hỏi đơn hàng mã vf hai không hai năm không một đặt cọp xong mà vẫn chưa thấy gọi.",
+      "wer": 0.0476,
+      "cer": 0.0114
+    },
+    {
+      "audio": "audio/voice5.wav",
+      "category": "G_3",
+      "asr_output": "số đặt hàng của em là không chín một hai ba bốn năm sáu bảy tám em là khách cá nhân.",
+      "wer": 0.0,
+      "cer": 0.0
+    },
+    {
+      "audio": "audio/voice6.wav",
+      "category": "G_4",
+      "asr_output": "xe máy điện phi lết của em bị lỗi biển b em ở cầu giấy hà nội.",
+      "wer": 0.4167,
+      "cer": 0.4111
+    },
+    {
+      "audio": "audio/voice7.wav",
+      "category": "G_4",
+      "asr_output": "ờ cho em hỏi là cái xe nó báo bị lỗi pin ấy thì bây giờ nhà mình xử lý cho em như thế nào nhờ bây giờ em cũng không đi được mà em cũng không vào được xe luôn thì xe em cứ để đây mãi cũng không được ấy ạ.",
+      "wer": 0.0377,
+      "cer": 0.0099
+    },
+    {
+      "audio": "audio/voice8.wav",
+      "category": "G_5",
+      "asr_output": "màn thịnh xe em bị treo dồi không vào được giao diện phiên bản phần mềm là hai chấm không chấm năm.",
+      "wer": 0.0909,
+      "cer": 0.0309
+    },
+    {
+      "audio": "audio/voice9.wav",
+      "category": "G_1",
+      "asr_output": "biệt số xe của em là ba mươi a à nhầm nhầm nhầm ba mươi f bốn năm sáu bảy.",
+      "wer": 0.05,
+      "cer": 0.0274
+    },
+    {
+      "audio": "audio/voice10.wav",
+      "category": "G_2",
+      "asr_output": "a lô ừ ừ không xe của anh vẫn bình thường cũng là đi mấy hôm nay đi ngoài mưa thôi chứ không không bị ngập cái gì hết nó cứ trâu chặc ở cái khởi động nguồn ý lại không bây giờ lại không khởi động được thôi được rồi được rồi.",
+      "wer": 0.283,
+      "cer": 0.2009
+    },
+    {
+      "audio": "audio/voice11.wav",
+      "category": "G_3",
+      "asr_output": "à vâng vâng vâng đúng rồi em cũng chưa biết thấy bên đấy mà bảo là bên mình chưa thấy là chưa có xe nào ý thế chắc để tí em xem lại xem để mà nguội sau em bảo à vâng vâng em có đồ ý nhá vầng vầng vầng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng vâng.",
+      "wer": 0.5909,
+      "cer": 0.5285
+    },
+    {
+      "audio": "audio/voice12.wav",
+      "category": "G_3",
+      "asr_output": "ờ anh cho em hỏi cái em mua xe mà mùng tháng tám sở hữu mà sao tối nay chưa có xe em mua xe mà em mua xe mà dạng như thuê sở hữu á thuê sở hữu vậy à cái đấy là đúng rồi mộc tê tháng tám mười bảy.",
+      "wer": 0.2807,
+      "cer": 0.1981
+    },
+    {
+      "audio": "audio/voice13.wav",
+      "category": "G_3",
+      "asr_output": "chị rất muốn hỏi cái đơn hàng của chị giải quyết như thế nào rồi thế chị chờ bao giờ nhở ý chị là cái đơn hàng của chị còn hay là là là sẽ được hoàn cộng.",
+      "wer": 0.0769,
+      "cer": 0.0701
+    }
+  ],
+  "asr_model": "vinai/PhoWhisper-medium (CTranslate2 int8)",
+  "normalization": "lowercase + strip punctuation + collapse whitespace (both sides)"
+}
