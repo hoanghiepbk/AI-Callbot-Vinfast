@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import time
 import wave
 from dataclasses import dataclass, field
@@ -22,6 +23,23 @@ from callbot import config
 from callbot.tts.base import TTSResult
 
 logger = logging.getLogger(__name__)
+
+_VIET_DIGITS = {
+    "0": "không", "1": "một", "2": "hai", "3": "ba",
+    "4": "bốn", "5": "năm", "6": "sáu", "7": "bảy",
+    "8": "tám", "9": "chín",
+}
+
+
+def _expand_digits(m: re.Match) -> str:
+    """Expand a run of ≥4 digits to space-separated Vietnamese digit names."""
+    return " ".join(_VIET_DIGITS[ch] for ch in m.group())
+
+
+def tts_preprocess(text: str) -> str:
+    """Expand digit runs before TTS so phone/VIN/plate are read digit-by-digit."""
+    return re.sub(r"\d{4,}", _expand_digits, text)
+
 
 # Default voice built by scripts/setup_tts.py (git-ignored binary).
 _DEFAULT_VOICE = (
@@ -63,7 +81,7 @@ class PiperTTS:
 
     def synthesize(self, text: str) -> TTSResult:
         started = time.perf_counter()
-        audio = self._synthesize_speech(text)
+        audio = self._synthesize_speech(tts_preprocess(text))
         return TTSResult(audio=audio, latency_ms=(time.perf_counter() - started) * 1000.0)
 
     def _synthesize_speech(self, text: str) -> bytes:
@@ -73,9 +91,17 @@ class PiperTTS:
                 logger.warning("PiperTTS: %s", _SETUP_HINT)
                 self._warned = True
             return _silence_wav()
+        try:
+            from piper.config import SynthesisConfig
+            synthesis_config = SynthesisConfig(length_scale=config.PIPER_LENGTH_SCALE)
+        except ImportError:
+            synthesis_config = None
         buffer = io.BytesIO()
         with wave.open(buffer, "wb") as wav:
-            voice.synthesize_wav(text, wav)
+            if synthesis_config is not None:
+                voice.synthesize_wav(text, wav, synthesis_config)
+            else:
+                voice.synthesize_wav(text, wav)
         return buffer.getvalue()
 
     def _load_voice(self) -> Any:

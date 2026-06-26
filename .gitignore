@@ -15,6 +15,7 @@ scenarios/audio/*.wav
 audio/*.wav
 audio/*.mp3
 audio/*.m4a
+audio/*.reference.txt
 .DS_Store
 *.egg-info/
 build/
