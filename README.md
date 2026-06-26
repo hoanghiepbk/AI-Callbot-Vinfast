@@ -201,6 +201,19 @@ pip install -e ".[gpu]"        # CUDA 12 runtime DLLs for ctranslate2 (cublas/cu
 needed. Ollama uses the GPU automatically (`ollama ps` shows `100% GPU`). Measured on an
 RTX 5070 (Blackwell, driver CUDA 13.1), voice E2E per turn dropped from **~8.9 s (CPU)** to
 **~1.4 s p50 (GPU)**: ASR 5984→489 ms, LLM 2934→948 ms.
+### Setup TTS voice (for spoken replies, +5 pts)
+
+The bot speaks with a real Vietnamese **female** Piper voice (`vi_VN-vais1000-medium`).
+Download it once:
+
+```bash
+pip install -e ".[tts]"        # piper-tts (onnxruntime-based)
+python scripts/setup_tts.py    # downloads the voice into models/piper/ (git-ignored)
+```
+
+`PiperTTS` auto-detects `models/piper/vi_VN-vais1000-medium.onnx` (override with `PIPER_VOICE`).
+Without a voice it returns **silence + a warning** (never a beep), so a missing voice is obvious
+rather than sounding broken. Set `TTS_ENGINE=none` for text-only.
 
 ### System / external dependencies (not pip)
 

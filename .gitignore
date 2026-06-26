@@ -6,6 +6,8 @@ __pycache__/
 models/*.bin
 # Converted ASR weights (heavy) — rebuilt locally via scripts/setup_asr.py, never committed.
 models/phowhisper-medium-ct2/
+# Piper voice (heavy .onnx) — downloaded via scripts/setup_tts.py, never committed.
+models/piper/
 scenarios/audio/*.wav
 # Raw recordings (real voices, heavy) are private — never commit audio binaries.
 # Transcripts (.reference.txt), scenarios/audio/manifest.json and eval/wer_results.json

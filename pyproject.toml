@@ -43,6 +43,9 @@ gpu = [
     "nvidia-cublas-cu12==12.9.2.10",
     "nvidia-cuda-runtime-cu12==12.9.79",
     "nvidia-cudnn-cu12==9.23.2.1",
+# TTS: real Vietnamese speech via Piper (onnxruntime). Voice downloaded by scripts/setup_tts.py.
+tts = [
+    "piper-tts==1.4.2",
 ]
 
 # src-layout: package lives under src/callbot so `pip install -e .` exposes `import callbot`.
