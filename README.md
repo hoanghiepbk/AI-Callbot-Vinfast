@@ -188,6 +188,20 @@ weights are git-ignored. To skip PhoWhisper, set `ASR_MODEL=medium` (generic fas
 > Audio for `pipeline.turn(audio=…)` must be **16 kHz mono** (live mic capture already is;
 > `from_file()` handles other rates, so WER on 48 kHz clips works).
 
+### Setup TTS voice (for spoken replies, +5 pts)
+
+The bot speaks with a real Vietnamese **female** Piper voice (`vi_VN-vais1000-medium`).
+Download it once:
+
+```bash
+pip install -e ".[tts]"        # piper-tts (onnxruntime-based)
+python scripts/setup_tts.py    # downloads the voice into models/piper/ (git-ignored)
+```
+
+`PiperTTS` auto-detects `models/piper/vi_VN-vais1000-medium.onnx` (override with `PIPER_VOICE`).
+Without a voice it returns **silence + a warning** (never a beep), so a missing voice is obvious
+rather than sounding broken. Set `TTS_ENGINE=none` for text-only.
+
 ### System / external dependencies (not pip)
 
 - **Ollama** — install separately and pull the model: `ollama pull qwen3:8b` (LLM runtime).

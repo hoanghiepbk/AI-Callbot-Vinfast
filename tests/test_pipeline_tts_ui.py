@@ -53,7 +53,9 @@ def _engine() -> FakeDialogueEngine:
 
 
 def test_piper_tts_returns_valid_wav_bytes() -> None:
-    tts = PiperTTS(voice_path=None, executable=None, fallback_mode="tone")
+    # No voice installed in CI -> synthesize returns a valid silent WAV (never crashes,
+    # never a beep). With a real voice in models/piper/ it returns Vietnamese speech.
+    tts = PiperTTS()
 
     result = tts.synthesize("Xin chao anh/chị")
 
