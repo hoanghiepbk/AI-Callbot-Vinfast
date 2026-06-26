@@ -25,9 +25,16 @@ from callbot.tts.base import TTSResult
 logger = logging.getLogger(__name__)
 
 _VIET_DIGITS = {
-    "0": "không", "1": "một", "2": "hai", "3": "ba",
-    "4": "bốn", "5": "năm", "6": "sáu", "7": "bảy",
-    "8": "tám", "9": "chín",
+    "0": "không",
+    "1": "một",
+    "2": "hai",
+    "3": "ba",
+    "4": "bốn",
+    "5": "năm",
+    "6": "sáu",
+    "7": "bảy",
+    "8": "tám",
+    "9": "chín",
 }
 
 
@@ -93,6 +100,7 @@ class PiperTTS:
             return _silence_wav()
         try:
             from piper.config import SynthesisConfig
+
             synthesis_config = SynthesisConfig(length_scale=config.PIPER_LENGTH_SCALE)
         except ImportError:
             synthesis_config = None
