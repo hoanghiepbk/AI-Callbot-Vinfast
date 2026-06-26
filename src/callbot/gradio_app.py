@@ -65,23 +65,37 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
         final = pipeline.finalize()
         return final.model_dump(mode="json")
 
-    with gr.Blocks(title="VinFast Callbot") as demo:
-        gr.Markdown("# VinFast Callbot")
-        gr.Markdown("Mic in or text in, transcript + live JSON state + TTS reply out.")
+    with gr.Blocks(title="VinFast Callbot", theme=gr.themes.Soft(primary_hue="blue")) as demo:
+        gr.Markdown(
+            "# 🚗 VinFast — Tổng đài viên ảo\n"
+            "Trợ lý chăm sóc khách hàng tiếng Việt: **nghe → hiểu → trả lời bằng giọng nói**. "
+            "Nói vào micro hoặc gõ câu của khách, bot thu thập thông tin theo 5 nhóm "
+            "(cứu hộ · bảo hành · đơn hàng · xe máy · hỗ trợ kỹ thuật)."
+        )
 
         with gr.Row():
-            audio = gr.Audio(sources=["microphone"], type="numpy", label="Mic input")
-            text = gr.Textbox(label="Text input", placeholder="Type a caller utterance here")
+            with gr.Column(scale=1):
+                gr.Markdown("### 🎙️ Khách hàng")
+                audio = gr.Audio(sources=["microphone"], type="numpy", label="Nói vào micro")
+                text = gr.Textbox(
+                    label="Hoặc gõ câu của khách",
+                    placeholder="VD: em hỏi tình trạng đơn đặt cọc xe của em…",
+                )
+                with gr.Row():
+                    submit = gr.Button("Gửi lượt", variant="primary")
+                    finalize_btn = gr.Button("Kết thúc cuộc gọi", variant="secondary")
 
-        submit = gr.Button("Send turn")
-        finalize_btn = gr.Button("Finalize call")
+            with gr.Column(scale=1):
+                gr.Markdown("### 🤖 Tổng đài viên")
+                reply = gr.Textbox(label="Bot trả lời", lines=3)
+                tts_audio = gr.Audio(label="Bot nói (nghe)", autoplay=True)
+                transcript = gr.Textbox(label="Lịch sử hội thoại", lines=6)
 
-        reply = gr.Textbox(label="Bot reply", lines=3)
-        transcript = gr.Textbox(label="Transcript", lines=8)
-        state = gr.JSON(label="Live state")
-        final = gr.JSON(label="Final JSON")
-        latency = gr.JSON(label="Latency (ms)")
-        tts_audio = gr.Audio(label="TTS playback")
+        with gr.Accordion("🔎 Chi tiết kỹ thuật (slot · JSON cuối · độ trễ)", open=False):
+            with gr.Row():
+                state = gr.JSON(label="Trạng thái slot (live)")
+                final = gr.JSON(label="JSON cuối cuộc gọi")
+                latency = gr.JSON(label="Độ trễ theo tầng (ms)")
 
         submit.click(
             _turn,
