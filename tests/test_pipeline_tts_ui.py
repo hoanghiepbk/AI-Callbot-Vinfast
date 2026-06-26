@@ -95,9 +95,20 @@ def test_pipeline_audio_turn_uses_asr() -> None:
     assert turn.reply_audio is not None
 
 
+def test_edge_tts_synth_is_silence_safe_without_deps() -> None:
+    # No edge-tts/internet in CI -> graceful silent WAV, never crashes (like Piper).
+    from callbot.tts.edge_tts import EdgeTTS
+
+    result = EdgeTTS().synthesize("Xin chào")
+    assert result.audio[:4] == b"RIFF"
+
+
 def test_tts_factory_and_gradio_factory_are_safe_without_optional_deps() -> None:
+    from callbot.tts.edge_tts import EdgeTTS
+
     assert create_tts("none") is None
     assert isinstance(create_tts("piper"), PiperTTS)
+    assert isinstance(create_tts("edge"), EdgeTTS)
 
     demo = create_demo(pipeline=CallbotPipeline(engine=_engine(), asr=None, tts=_StubTTS()))
     assert (demo.available and demo.blocks is not None) or (

@@ -44,8 +44,10 @@ gpu = [
     "nvidia-cuda-runtime-cu12==12.9.79",
     "nvidia-cudnn-cu12==9.23.2.1",
     ]
-# TTS: real Vietnamese speech via Piper (onnxruntime). Voice downloaded by scripts/setup_tts.py.
+# TTS: local Piper (onnxruntime, voice via scripts/setup_tts.py) + Edge neural cloud voice
+# (TTS_ENGINE=edge — nicer young-female demo voice, needs internet).
 tts = [
+    "edge-tts==7.2.8",
     "piper-tts==1.4.2",
 ]
 
