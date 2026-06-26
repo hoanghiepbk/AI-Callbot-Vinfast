@@ -1,0 +1,80 @@
+[
+  {
+    "audio": "audio/voice1.wav",
+    "category": "G_1",
+    "note": "cứu hộ - chết máy cao tốc",
+    "reference_text": "Alô anh ơi , xe em chết máy ở cao tốc Long Thành Dầu Giây, biển số ba mươi A bốn năm sáu bảy tám, model VF tám."
+  },
+  {
+    "audio": "audio/voice2.wav",
+    "category": "G_1",
+    "note": "cứu hộ - đỗ giữa đường không nổ máy",
+    "reference_text": "Em đỗ giữa đường không nổ máy được, vị trí gần ngã tư Phạm Văn Đồng, số em là không chín tám hai ba bốn năm sáu bảy tám."
+  },
+  {
+    "audio": "audio/voice3.wav",
+    "category": "G_2",
+    "note": "bảo hành - hỏi hạn bảo hành VF 9",
+    "reference_text": "Em tên Nguyễn Thị Phương, xe VF chín của em hết hạn bảo hành chưa ạ, biển ba mươi G một hai ba bốn năm."
+  },
+  {
+    "audio": "audio/voice4.wav",
+    "category": "G_3",
+    "note": "đơn hàng - hỏi mã đơn",
+    "reference_text": "Em muốn hỏi đơn hàng mã VF hai không hai năm không một, đặt cọc xong mà vẫn chưa thấy gọi."
+  },
+  {
+    "audio": "audio/voice5.wav",
+    "category": "G_3",
+    "note": "đơn hàng - số đặt hàng + khách cá nhân",
+    "reference_text": "Số đặt hàng của em là không chín một hai ba bốn năm sáu bảy tám, em là khách cá nhân."
+  },
+  {
+    "audio": "audio/voice6.wav",
+    "category": "G_4",
+    "note": "xe máy điện - lỗi Feliz",
+    "reference_text": "Xe máy điện Feliz của em bị lỗi ấy, biển hai chín B một hai ba bốn năm, em ở Cầu Giấy Hà Nội."
+  },
+  {
+    "audio": "audio/voice7.wav",
+    "category": "G_4",
+    "note": "xe máy điện - lỗi pin không vào được xe",
+    "reference_text": "ờ cho em hỏi là cái xe nó báo bị lỗi pin ấy thì bây giờ nhà mình xử lí cho em như thế nào nhở ,bây giờ em cũng không đi được mà em cũng không vào được xe luôn thì , xe em cứ để đây mãi cũng không được ấy ạ"
+  },
+  {
+    "audio": "audio/voice8.wav",
+    "category": "G_5",
+    "note": "hỗ trợ kỹ thuật - màn hình treo",
+    "reference_text": "màn hình xe em bị treo rồi không vào được giao diện , phiên bản phần mềm là hai chấm không chấm năm."
+  },
+  {
+    "audio": "audio/voice9.wav",
+    "category": "G_1",
+    "note": "biển số - khách tự sửa (à nhầm)",
+    "reference_text": "biển số xe của em là ba mươi A à nhầm nhầm nhầm ba mươi F bốn năm sáu bảy."
+  },
+  {
+    "audio": "audio/voice10.wav",
+    "category": "G_2",
+    "note": "bảo hành - trục trặc khởi động nguồn",
+    "reference_text": "Alo Ừ. Ừ. Không xe của anh vẫn bình thường thôi là đi mấy hôm nay đi đi ngoài mưa thôi chứ không không bị ngập cái gì hết. Nó trục trặc ở cái khởi động nguồn ấy nên là lại không bây giờ lại không khởi động được. Ok ok. Ok ok."
+  },
+  {
+    "audio": "audio/voice11.wav",
+    "category": "G_3",
+    "note": "đơn hàng - hội thoại dài nhiều nhiễu",
+    "reference_text": "Vâng à, vâng vâng. Vâng đúng rồi chị. Em cũng chưa biết thấy bên đấy nó bảo là bên mình chưa thì hình như là chưa chưa có xe hay sao ý. Thì chắc là để tí em xem lại xem. Vâng vâng, muốn hỏi gì sau anh bảo. À vâng vâng. Em có rồi chị ạ. Vâng vâng. Dạ Vâng vâng, em cảm ơn nhá."
+  },
+  {
+    "audio": "audio/voice12.wav",
+    "category": "G_3",
+    "note": "đơn hàng - đặt cọc thuê sở hữu",
+    "reference_text": "À anh cho em hỏi cái em mua xe á mà đặt cọc tháng tám sở hữu á mà sao tới nay chưa có xe .Em mua xe mà em mua xe mà dạng thuê sở hữu á. Thuê sở hữu à anh? cái này là của Dạ đúng rồi. cọc xe tháng tám tám bảy bảy."
+  },
+  {
+    "audio": "audio/voice13.wav",
+    "category": "G_3",
+    "note": "đơn hàng - hỏi tiến độ/hoàn cọc",
+    "reference_text": "Chị đang muốn hỏi cái đơn hàng của chị giải quyết như thế nào rồi? Thế chị chờ đến bao giờ nhở? Ý chị là cái đơn hàng của chị còn hay là là là sẽ được hoàn cọc?"
+  }
+]

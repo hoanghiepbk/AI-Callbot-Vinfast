@@ -1,12 +1,16 @@
 """WER / CER measurement (A30, folds in B14) — conditional on an audio set.
 
-Reads scenarios/audio/manifest.json: a list of {"audio": "<file>.wav", "text": "<gold>"}.
-For each entry it transcribes the wav with FasterWhisperASR.from_file (B11) and compares
-against the gold transcript (both normalized) using jiwer.
+Reads scenarios/audio/manifest.json: a list of
+``{"audio": "<path>", "reference_text": "<gold>", "category": "...", ...}``. The ``audio``
+path is resolved relative to the REPO ROOT (e.g. "audio/voice1.wav"), so the raw recordings
+can live in a private, git-ignored folder while the manifest + results stay committed. For
+each entry it transcribes the wav with FasterWhisperASR.from_file (B11) and compares against
+the reference transcript (both normalized) using jiwer.
 
-If the manifest is missing/empty, OR jiwer is not installed, it returns a 'pending' result
-and NEVER blocks A30 — B14 audio is not ready yet. We do NOT synthesize TTS audio to fake a
-WER number (that would measure the TTS+ASR loop, not real ASR — decided out of scope).
+If the manifest is missing/empty, the wav files are absent (git-ignored on a fresh clone),
+OR jiwer is not installed, it returns a 'pending' result and NEVER blocks — the committed
+wer_results.json holds the numbers. We do NOT synthesize TTS audio to fake a WER number
+(that would measure the TTS+ASR loop, not real ASR — decided out of scope).
 """
 
 from __future__ import annotations
@@ -15,7 +19,8 @@ import json
 import re
 from pathlib import Path
 
-_AUDIO_DIR = Path(__file__).resolve().parent.parent / "scenarios" / "audio"
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_AUDIO_DIR = _REPO_ROOT / "scenarios" / "audio"
 _MANIFEST = _AUDIO_DIR / "manifest.json"
 
 
@@ -54,17 +59,24 @@ def measure_wer() -> dict:
     hyps: list[str] = []
     per_file: list[dict] = []
     for entry in entries:
-        wav = _AUDIO_DIR / entry["audio"]
+        wav = _REPO_ROOT / entry["audio"]
+        reference = entry.get("reference_text", entry.get("text", ""))
         if not wav.is_file():
             per_file.append({"audio": entry["audio"], "error": "wav not found"})
             continue
-        gold = _normalize(entry["text"])
-        hyp = _normalize(FasterWhisperASR.from_file(str(wav)).text)
+        try:
+            raw_hyp = FasterWhisperASR.from_file(str(wav)).text
+        except Exception as exc:  # noqa: BLE001 - model unavailable -> pending, never crash
+            return _pending(f"ASR model unavailable ({type(exc).__name__}); set ASR_MODEL")
+        gold = _normalize(reference)
+        hyp = _normalize(raw_hyp)
         refs.append(gold)
         hyps.append(hyp)
         per_file.append(
             {
                 "audio": entry["audio"],
+                "category": entry.get("category"),
+                "asr_output": raw_hyp,
                 "wer": round(jiwer.wer(gold, hyp), 4),
                 "cer": round(jiwer.cer(gold, hyp), 4),
             }
