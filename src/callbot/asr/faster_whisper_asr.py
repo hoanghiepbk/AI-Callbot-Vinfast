@@ -35,6 +35,31 @@ def _resolve_model(explicit: str | None) -> str:
     return _PLACEHOLDER  # not converted -> load raises with the setup hint below
 
 
+def _ensure_cuda_dlls() -> None:
+    """Put the CUDA 12 runtime DLLs on PATH so ctranslate2 can load on GPU (Windows).
+
+    The `nvidia-*-cu12` wheels (pip install -e ".[gpu]") ship cublas/cudnn/cudart under
+    site-packages/nvidia/*/bin. ctranslate2 loads them via the OS loader, which searches PATH,
+    so we prepend those dirs in-process — no system CUDA toolkit install needed.
+    """
+    import glob
+    import sys
+
+    if sys.platform != "win32":
+        return  # Linux wheels expose the libs differently; nothing to do here
+    try:
+        import site
+
+        bases = site.getsitepackages()
+    except Exception:  # noqa: BLE001 - site layout varies; skip silently
+        return
+    dirs = [d for base in bases for d in glob.glob(os.path.join(base, "nvidia", "*", "bin"))]
+    current = os.environ.get("PATH", "")
+    missing = [d for d in dirs if d not in current]
+    if missing:
+        os.environ["PATH"] = os.pathsep.join(missing) + os.pathsep + current
+
+
 class FasterWhisperASR:
     """ASR adapter backed by faster-whisper/CTranslate2.
 
@@ -68,6 +93,8 @@ class FasterWhisperASR:
 
             if self.model_name == _PLACEHOLDER:
                 raise RuntimeError(_SETUP_HINT)
+            if self.device == "cuda":
+                _ensure_cuda_dlls()  # make the bundled CUDA runtime loadable (Windows)
             try:
                 self._model = WhisperModel(
                     self.model_name,

@@ -36,6 +36,14 @@ asr = [
 ui = [
     "gradio==6.19.0",
 ]
+# GPU ASR: CUDA 12 runtime DLLs (cublas/cudnn/cudart) for ctranslate2 on NVIDIA GPUs.
+# FasterWhisperASR puts these on PATH automatically when ASR_DEVICE=cuda (Windows). Verified
+# on RTX 5070 / Blackwell sm_120 (driver CUDA 13.1) with ASR_COMPUTE_TYPE=float16.
+gpu = [
+    "nvidia-cublas-cu12==12.9.2.10",
+    "nvidia-cuda-runtime-cu12==12.9.79",
+    "nvidia-cudnn-cu12==9.23.2.1",
+]
 
 # src-layout: package lives under src/callbot so `pip install -e .` exposes `import callbot`.
 [tool.setuptools.packages.find]
