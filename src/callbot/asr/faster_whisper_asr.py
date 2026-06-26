@@ -11,13 +11,37 @@ import numpy as np
 
 from callbot.asr.base import ASRResult
 
+# "phowhisper-medium" is a friendly label, NOT a loadable faster-whisper name — PhoWhisper
+# ships as a HuggingFace transformers checkpoint and must be converted to CTranslate2 first
+# (scripts/setup_asr.py). The local CT2 export lives here once built.
+_PLACEHOLDER = "phowhisper-medium"
+_LOCAL_CT2 = Path(__file__).resolve().parents[3] / "models" / "phowhisper-medium-ct2"
+_SETUP_HINT = (
+    "PhoWhisper is not converted to CTranslate2 yet. Run `python scripts/setup_asr.py` to "
+    "build models/phowhisper-medium-ct2, or set ASR_MODEL to a faster-whisper model name "
+    "(e.g. 'medium') or a CT2 path."
+)
+
+
+def _resolve_model(explicit: str | None) -> str:
+    """Pick the ASR model: explicit arg > real ASR_MODEL > local CT2 export > placeholder."""
+    if explicit:
+        return explicit
+    env = os.getenv("ASR_MODEL")
+    if env and env != _PLACEHOLDER:
+        return env  # user pointed ASR_MODEL at a real model / CT2 path
+    if _LOCAL_CT2.is_dir():
+        return str(_LOCAL_CT2)  # the converted PhoWhisper from setup_asr.py
+    return _PLACEHOLDER  # not converted -> load raises with the setup hint below
+
 
 class FasterWhisperASR:
     """ASR adapter backed by faster-whisper/CTranslate2.
 
     Heavy model loading is lazy so importing the module does not download or
-    initialize model weights. Use a PhoWhisper CT2 model path/name by default,
-    with generic faster-whisper model names as a fallback via ASR_MODEL.
+    initialize model weights. Defaults to the local PhoWhisper-medium CT2 export
+    (built by scripts/setup_asr.py); ASR_MODEL can override with any faster-whisper
+    model name or CT2 path.
     """
 
     def __init__(
@@ -28,7 +52,7 @@ class FasterWhisperASR:
         compute_type: str | None = None,
         language: str = "vi",
     ) -> None:
-        self.model_name = model_name or os.getenv("ASR_MODEL", "phowhisper-medium")
+        self.model_name = _resolve_model(model_name)
         self.device = device or os.getenv("ASR_DEVICE", "cpu")
         self.compute_type = compute_type or os.getenv("ASR_COMPUTE_TYPE", "int8")
         self.language = language
@@ -42,11 +66,16 @@ class FasterWhisperASR:
             except ImportError as exc:  # pragma: no cover - depends on optional runtime install
                 raise RuntimeError("faster-whisper is required for ASR") from exc
 
-            self._model = WhisperModel(
-                self.model_name,
-                device=self.device,
-                compute_type=self.compute_type,
-            )
+            if self.model_name == _PLACEHOLDER:
+                raise RuntimeError(_SETUP_HINT)
+            try:
+                self._model = WhisperModel(
+                    self.model_name,
+                    device=self.device,
+                    compute_type=self.compute_type,
+                )
+            except ValueError as exc:  # invalid model name/path -> point at the setup script
+                raise RuntimeError(f"{exc}. {_SETUP_HINT}") from exc
         return self._model
 
     def transcribe(self, audio: np.ndarray | list[float], sample_rate: int = 16000) -> ASRResult:

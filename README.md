@@ -163,6 +163,7 @@ python -m venv .venv
 .venv\Scripts\activate                 # Linux/macOS: source .venv/bin/activate
 pip install -e ".[dev]"                # callbot + pinned runtime + eval/dev tools (jiwer, pytest…)
 # pip install -e .                      # runtime only (no eval/dev tooling)
+# pip install -e ".[asr,ui]"           # ASR conversion deps + Gradio demo (for voice/UI)
 cp .env.example .env                    # configure OLLAMA_HOST, model names, etc.
 ```
 
@@ -170,13 +171,29 @@ All dependencies are pinned with `==` in [pyproject.toml](pyproject.toml). Verif
 clean Python 3.11 venv: `pip install -e ".[dev]"` exits 0 and `python -m eval.run_eval`
 prints metrics (see [docs/eval_report.md](docs/eval_report.md)).
 
+### Setup ASR (required for voice mode)
+
+PhoWhisper is the best Vietnamese Whisper model, but ships as a transformers checkpoint —
+faster-whisper needs CTranslate2. Convert it once:
+
+```bash
+pip install -e ".[asr]"        # transformers + ctranslate2
+python scripts/setup_asr.py    # builds models/phowhisper-medium-ct2 (int8); set HF_TOKEN if gated
+```
+
+`FasterWhisperASR` then auto-detects `models/phowhisper-medium-ct2`. Without this step, voice
+mode raises a clear error pointing back here. (Text mode + eval do not need ASR.) The converted
+weights are git-ignored. To skip PhoWhisper, set `ASR_MODEL=medium` (generic faster-whisper).
+
+> Audio for `pipeline.turn(audio=…)` must be **16 kHz mono** (live mic capture already is;
+> `from_file()` handles other rates, so WER on 48 kHz clips works).
+
 ### System / external dependencies (not pip)
 
 - **Ollama** — install separately and pull the model: `ollama pull qwen3:8b` (LLM runtime).
 - **PortAudio** — needed by `sounddevice` for mic I/O. Linux: `apt install libportaudio2`;
   macOS: `brew install portaudio`; Windows: bundled with the wheel.
 - **torch** — pulled in by `silero-vad` (large download, CPU build is fine).
-- ASR weights (PhoWhisper / faster-whisper) download on first run.
 
 No credentials in code — API keys / tokens via `.env` only.
 
