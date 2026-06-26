@@ -1,0 +1,46 @@
+{
+  "baseline": {
+    "slot_f1": 0.862,
+    "routing": 1.0,
+    "emergency_recall": 1.0,
+    "emergency_calm_recall": 1.0,
+    "json_valid_pct": 100.0,
+    "latency_p50_ms": 806.2
+  },
+  "ablations": {
+    "thinking_on": {
+      "emergency_recall": 1.0,
+      "emergency_calm_recall": 1.0,
+      "json_valid_pct": 99.2,
+      "delta_calm_recall": 0.0,
+      "delta_json_valid_pct": -0.8
+    },
+    "glossary_off": {
+      "slot_f1": 0.267,
+      "delta_slot_f1": -0.595
+    },
+    "keyword_off": {
+      "emergency_recall": 1.0,
+      "emergency_calm_recall": 1.0,
+      "delta_recall": 0.0
+    },
+    "template_off": {
+      "latency_p50_ms": 3095.1,
+      "delta_ms": 2288.9
+    },
+    "think_first_attempt": {
+      "runs_per_case": 5,
+      "cases": 5,
+      "think_true": {
+        "json_empty_pct": 0.0,
+        "calm_recall_first_attempt_pct": 100.0,
+        "total_calls": 25
+      },
+      "think_false": {
+        "json_empty_pct": 0.0,
+        "calm_recall_first_attempt_pct": 100.0,
+        "total_calls": 25
+      }
+    }
+  }
+}
