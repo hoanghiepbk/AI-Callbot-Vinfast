@@ -36,6 +36,8 @@ TTS_ENGINE = os.environ.get("TTS_ENGINE", "piper").strip().lower() or "piper"
 PIPER_BINARY = os.environ.get("PIPER_BINARY", "piper").strip() or "piper"
 PIPER_VOICE = os.environ.get("PIPER_VOICE", "").strip()
 PIPER_SPEAKER = os.environ.get("PIPER_SPEAKER", "").strip()
+# Edge-TTS voice (used when TTS_ENGINE=edge). Default = young female Vietnamese neural voice.
+EDGE_VOICE = os.environ.get("EDGE_VOICE", "vi-VN-HoaiMyNeural").strip() or "vi-VN-HoaiMyNeural"
 try:
     PIPER_SAMPLE_RATE = int(os.environ.get("PIPER_SAMPLE_RATE", "22050"))
 except ValueError:
