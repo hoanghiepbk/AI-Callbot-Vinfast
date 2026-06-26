@@ -41,6 +41,11 @@ try:
 except ValueError:
     PIPER_SAMPLE_RATE = 22050
 
+try:
+    PIPER_LENGTH_SCALE = float(os.environ.get("PIPER_LENGTH_SCALE", "1.3"))
+except ValueError:
+    PIPER_LENGTH_SCALE = 1.3
+
 # Voice-mode backchannel: play a fixed "dạ vâng ạ" filler the instant audio arrives, masking
 # ASR+LLM latency so the caller perceives an instant reply. Opt-in (off by default).
 VOICE_FILLER = os.environ.get("VOICE_FILLER", "0").strip().lower() in {"1", "true", "yes", "on"}
