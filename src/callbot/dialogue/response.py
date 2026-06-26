@@ -91,3 +91,15 @@ def closing_done(turn_index: int) -> str:
 
 def closing_goodbye(turn_index: int) -> str:
     return "Dạ vâng, khi cần anh/chị gọi lại cho em nhé. Em cảm ơn ạ."
+
+
+_FILLERS = [
+    "Dạ vâng ạ.",
+    "Dạ em nghe ạ.",
+    "Dạ anh/chị chờ em chút ạ.",
+]
+
+
+def filler(turn_index: int) -> str:
+    """Instant voice backchannel played while ASR+LLM run. Rotates so it is not robotic."""
+    return _FILLERS[turn_index % len(_FILLERS)]
