@@ -26,6 +26,16 @@ dev = [
     "pytest==9.1.1",
     "ruff==0.15.19",
 ]
+# ASR conversion: PhoWhisper -> CTranslate2 (run scripts/setup_asr.py). ctranslate2 also
+# arrives transitively via faster-whisper; pinned here so the converter is always present.
+asr = [
+    "ctranslate2==4.8.0",
+    "transformers==5.12.1",
+]
+# Gradio web demo (callbot.main --gradio).
+ui = [
+    "gradio==6.19.0",
+]
 
 # src-layout: package lives under src/callbot so `pip install -e .` exposes `import callbot`.
 [tool.setuptools.packages.find]
