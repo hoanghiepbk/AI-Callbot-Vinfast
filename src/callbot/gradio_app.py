@@ -245,6 +245,10 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
     history: list[tuple[str, str]] = []
 
     def _turn(audio, text):
+        if audio is None and not (text or "").strip():
+            # Nothing recorded or typed (e.g. "Gửi lượt" tapped with an empty mic): do not call
+            # the pipeline (it would raise) — leave the UI as-is.
+            return (gr.skip(),) * 8
         result = pipeline.turn(audio=audio, text=text or None, play_audio=False)
         if result.user_text.strip():
             history.append(("user", result.user_text))
@@ -252,6 +256,8 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
             history.append(("bot", result.reply_text))
         final = result.final_output.model_dump(mode="json") if result.final_output else {}
         return (
+            None,  # clear the mic -> recorder resets to the record button for the next turn
+            "",  # clear the textbox
             _bot_reply_html(result.reply_text),
             _history_html(history),
             _json_dark(result.state),
@@ -450,7 +456,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                     submit.click(
                         _turn,
                         inputs=[audio, text],
-                        outputs=[reply, transcript, state, final, tts_audio, latency],
+                        outputs=[audio, text, reply, transcript, state, final, tts_audio, latency],
                     )
                     finalize_btn.click(_finalize, outputs=[final])
                     reset_btn.click(
