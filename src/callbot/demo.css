@@ -273,6 +273,22 @@ footer { display: none !important; }
   border-radius: 13px !important; font-weight: 600 !important;
 }
 
+/* ---- Make Gradio's mic record/stop buttons big and obvious (default ones are tiny + low
+   contrast, so on a phone callers couldn't tell where to tap). ---- */
+.vf-micbox .controls { gap: 10px !important; row-gap: 10px !important; }
+.vf-micbox .record-button, .vf-micbox button.record-button {
+  background: linear-gradient(135deg, #E0344B, #C81E38) !important; color: #fff !important;
+  border: none !important; border-radius: 12px !important;
+  min-height: 48px !important; height: auto !important; padding: 0 22px !important;
+  font-weight: 700 !important; gap: 9px !important;
+  box-shadow: 0 10px 22px -12px rgba(224, 52, 75, .65) !important;
+}
+.vf-micbox .stop-button, .vf-micbox button.stop-button {
+  background: #fff !important; color: #E0344B !important; border: 2px solid #E0344B !important;
+  border-radius: 12px !important; min-height: 48px !important; height: auto !important;
+  padding: 0 20px !important; font-weight: 700 !important;
+}
+
 /* ---- Tablet / small laptop: stack the two cards and declutter the header ---- */
 @media (max-width: 860px) {
   /* Stack the two cards full-width. Forcing each child to a full-width flex basis makes them wrap
@@ -286,6 +302,23 @@ footer { display: none !important; }
   .vf-hero { flex-direction: column; align-items: flex-start; gap: 18px; }
   .vf-kpis { width: 100%; }
   .vf-kpi { flex: 1 1 0; min-width: 0; }
+}
+
+/* ---- Reduce repaint/jank on touch devices ---- */
+/* A sticky header with backdrop-blur repaints every frame while content scrolls or the decorative
+   waveforms animate; on a phone that stutters the moment recording starts. Drop the blur + sticky
+   and freeze the perpetual animations there (they are purely decorative). */
+@media (max-width: 860px) {
+  .vf-header {
+    position: static !important; background: rgba(255, 255, 255, .95) !important;
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  }
+  .vf-wave i, .vf-online i, .vf-status.listen i { animation: none !important; }
+  /* Reserve the mic box height so the record -> recording control swap doesn't shift the layout. */
+  .vf-micbox { min-height: 118px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vf-wave i, .vf-online i, .vf-status.listen i, .vf-card-head .ico { animation: none !important; }
 }
 
 /* ---- Phone: bigger touch targets, full-width tabs, stacked buttons ---- */
