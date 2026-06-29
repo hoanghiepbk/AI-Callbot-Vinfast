@@ -72,7 +72,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
         pipeline.reset()
         return None, "", "", "", {}, {}, None, {}
 
-    with gr.Blocks(title="VinFast Callbot", theme=gr.themes.Soft(primary_hue="blue")) as demo:
+    with gr.Blocks(title="VinFast Callbot") as demo:
         gr.Markdown(
             "# 🚗 VinFast — Tổng đài viên ảo\n"
             "Trợ lý chăm sóc khách hàng tiếng Việt: **nghe → hiểu → trả lời bằng giọng nói**. "
