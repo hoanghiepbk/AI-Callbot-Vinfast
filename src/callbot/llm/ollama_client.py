@@ -18,6 +18,7 @@ owns the final safety net.
 from __future__ import annotations
 
 import json
+import os
 import time
 from types import SimpleNamespace
 
@@ -44,7 +45,20 @@ from callbot.llm.base import LLMResult
 # Structured calls that come back empty / non-JSON get retried this many times
 # (initial attempt + up to _MAX_RETRIES). Spike: 1 retry insufficient -> use 2.
 _MAX_RETRIES = 2
-_KEEP_ALIVE = "10m"  # keep the model resident so we don't pay cold-load per call
+
+
+def _resolve_keep_alive() -> int | str:
+    """How long Ollama keeps the model resident after a call. Default '-1' = stay loaded
+    indefinitely so a pause between demo turns never pays a multi-second reload spike.
+    Override via OLLAMA_KEEP_ALIVE (seconds as an int, or a duration string like '10m')."""
+    raw = os.environ.get("OLLAMA_KEEP_ALIVE", "-1").strip()
+    try:
+        return int(raw)  # seconds, or -1 for "keep loaded forever"
+    except ValueError:
+        return raw  # duration string, e.g. "10m"
+
+
+_KEEP_ALIVE = _resolve_keep_alive()
 
 
 class OllamaClient:

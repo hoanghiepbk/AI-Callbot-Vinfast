@@ -149,6 +149,19 @@ def test_mic_48k_int16_path_does_not_crash() -> None:
     assert asr.got_dtype == np.float32
 
 
+def test_warmup_pipeline_warms_asr_and_resets_state() -> None:
+    from callbot.main import _warmup_pipeline
+
+    asr = _StrictASR()
+    pipeline = CallbotPipeline(engine=_engine(), asr=asr, tts=_StubTTS())
+    _warmup_pipeline(pipeline)
+
+    assert asr.got_sr == 16000  # ASR was pre-loaded (warmed) at 16 kHz
+    # the warm-up turn was discarded -> the next real turn starts the conversation at index 1
+    turn = pipeline.turn(text="xin chao", play_audio=False)
+    assert turn.state["turn_index"] == 1
+
+
 def test_edge_tts_synth_is_silence_safe_without_deps() -> None:
     # No edge-tts/internet in CI -> graceful silent WAV, never crashes (like Piper).
     from callbot.tts.edge_tts import EdgeTTS
