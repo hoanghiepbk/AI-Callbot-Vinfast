@@ -153,6 +153,9 @@ footer { display: none !important; }
 .vf-card.teal { background: #FCFDFF !important; }
 /* header strip: a gr.HTML (elem_classes vf-head) pulled to the card edges with negative margins */
 .vf-head { margin: -18px -20px 12px !important; padding: 0 !important; background: transparent !important; border: none !important; }
+/* gr.HTML wraps content in .html-container with default block padding; zero it so the head strip
+   reaches the card edges instead of leaving a misaligned notch around the icon/title/status. */
+.vf-head .html-container, .vf-head .prose { padding: 0 !important; margin: 0 !important; }
 .vf-card-head {
   display: flex; align-items: center; gap: 11px; padding: 15px 18px;
   border-bottom: 1px solid #EEF1F7; background: linear-gradient(180deg, #F6FAFF, #FFFFFF);
@@ -189,8 +192,12 @@ footer { display: none !important; }
 /* ---- Mic box framing the gradio Audio recorder ---- */
 .vf-micbox {
   background: #FBF8F9 !important; border: 1px solid #F2E4E7 !important;
-  border-radius: 16px !important; padding: 14px !important;
+  border-radius: 16px !important; padding: 12px 14px !important;
 }
+/* Hide Gradio's per-device mic picker inside the call box: it truncates to an ugly
+   "No microphone f..." and the demo just records from the default device. */
+.vf-micbox .device-select-large, .vf-micbox .device-selection-wrapper,
+.vf-micbox .mic-select, .vf-micbox .source-selection { display: none !important; }
 .vf-wave { display: flex; align-items: center; gap: 3px; height: 34px; margin-top: 10px; }
 .vf-wave i {
   flex: 0 0 auto; width: 3px; border-radius: 3px; background: #E0344B;
@@ -265,13 +272,41 @@ footer { display: none !important; }
   box-shadow: 0 12px 24px -10px rgba(26, 99, 224, .6) !important;
 }
 .vf-end button {
-  background: #fff !important; color: #E0344B !important; border: 1px solid #F0D7DB !important;
-  border-radius: 13px !important; font-weight: 600 !important;
+  background: #FEF2F3 !important; color: #D8344A !important; border: 1.5px solid #F2C7CE !important;
+  border-radius: 13px !important; font-weight: 700 !important;
 }
 .vf-reset button {
-  background: #F1F5FB !important; color: #37455E !important; border: 1px solid #E1E7F1 !important;
-  border-radius: 13px !important; font-weight: 600 !important;
+  background: #EEF3FA !important; color: #2B3B57 !important; border: 1.5px solid #D5DFEE !important;
+  border-radius: 13px !important; font-weight: 700 !important;
 }
+
+/* ---- Make Gradio's mic record/stop buttons big and obvious (default ones are tiny + low
+   contrast, so on a phone callers couldn't tell where to tap). ---- */
+.vf-micbox .controls { gap: 10px !important; row-gap: 10px !important; }
+.vf-micbox .record-button, .vf-micbox button.record-button {
+  background: #E0344B !important; color: #fff !important; border: none !important;
+  border-radius: 12px !important; min-height: 46px !important; height: auto !important;
+  width: auto !important; flex: 0 0 auto !important; padding: 0 26px !important;
+  font-weight: 700 !important; justify-content: center !important; gap: 8px !important;
+  box-shadow: 0 8px 18px -10px rgba(224, 52, 75, .55) !important;
+}
+/* Kill any inner element's light background (it made the button look half-coloured) and keep the
+   record glyph white on the solid red fill. */
+.vf-micbox .record-button * { background: transparent !important; color: #fff !important; }
+.vf-micbox .record-button svg, .vf-micbox .record-button svg * {
+  fill: #fff !important; stroke: #fff !important;
+}
+/* Stop only restyles colour/border — no height override. The recorder lays its controls out in a
+   fixed-height container, so forcing a taller button made Stop overflow and get clipped in half. */
+.vf-micbox .stop-button, .vf-micbox .stop-button-paused, .vf-micbox button.stop-button {
+  background: #fff !important; color: #E0344B !important; border: 2px solid #E0344B !important;
+  border-radius: 10px !important; padding: 0 16px !important; font-weight: 700 !important;
+  width: auto !important; justify-content: center !important; text-align: center !important;
+}
+.vf-micbox .stop-button *, .vf-micbox .stop-button-paused * { background: transparent !important; }
+/* Hide the recorder's pause control: while recording it shows up as an orphaned, unstyled "II"
+   icon next to Stop, and a record-then-send turn never needs to pause mid-recording. */
+.vf-micbox .pause-button { display: none !important; }
 
 /* ---- Tablet / small laptop: stack the two cards and declutter the header ---- */
 @media (max-width: 860px) {
@@ -286,6 +321,23 @@ footer { display: none !important; }
   .vf-hero { flex-direction: column; align-items: flex-start; gap: 18px; }
   .vf-kpis { width: 100%; }
   .vf-kpi { flex: 1 1 0; min-width: 0; }
+}
+
+/* ---- Reduce repaint/jank on touch devices ---- */
+/* A sticky header with backdrop-blur repaints every frame while content scrolls or the decorative
+   waveforms animate; on a phone that stutters the moment recording starts. Drop the blur + sticky
+   and freeze the perpetual animations there (they are purely decorative). */
+@media (max-width: 860px) {
+  .vf-header {
+    position: static !important; background: rgba(255, 255, 255, .95) !important;
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  }
+  .vf-wave i, .vf-online i, .vf-status.listen i { animation: none !important; }
+  /* Reserve the mic box height so the record -> recording control swap doesn't shift the layout. */
+  .vf-micbox { min-height: 118px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vf-wave i, .vf-online i, .vf-status.listen i, .vf-card-head .ico { animation: none !important; }
 }
 
 /* ---- Phone: bigger touch targets, full-width tabs, stacked buttons ---- */

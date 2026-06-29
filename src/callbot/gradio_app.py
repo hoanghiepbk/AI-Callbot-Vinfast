@@ -264,6 +264,8 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
             history.append(("bot", result.reply_text))
         final = result.final_output.model_dump(mode="json") if result.final_output else {}
         return (
+            None,  # clear the mic -> recorder resets to the record button for the next turn
+            "",  # clear the textbox
             _bot_reply_html(result.reply_text),
             _history_html(history),
             _json_dark(result.state),
@@ -357,7 +359,6 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                                         type="numpy",
                                         show_label=False,
                                     )
-                                    gr.HTML(_wave_html())
                                 gr.HTML(_label("record_voice_over", "Khách vừa nói"))
                                 call_user = gr.HTML(_user_said_html(""))
                         with gr.Column(scale=1, min_width=330):
@@ -421,7 +422,6 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                                         type="numpy",
                                         show_label=False,
                                     )
-                                    gr.HTML(_wave_html())
                                 gr.HTML(_label("keyboard", "Hoặc gõ câu của khách"))
                                 text = gr.Textbox(
                                     show_label=False,
@@ -475,7 +475,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                     submit.click(
                         _turn,
                         inputs=[audio, text],
-                        outputs=[reply, transcript, state, final, tts_audio, latency],
+                        outputs=[audio, text, reply, transcript, state, final, tts_audio, latency],
                     )
                     finalize_btn.click(_finalize, outputs=[final])
                     reset_btn.click(
