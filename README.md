@@ -115,23 +115,29 @@ flags the LLM extracts:
 
 ```
 src/callbot/
-  main.py            # CLI entry (voice + text mode)
+  main.py            # CLI entry (--text / --voice real-time loop / --gradio)
   pipeline.py        # one turn: audio → ASR → engine → TTS, with latency timers
-  config.py          # .env loading
-  audio/             # mic capture, VAD, playback
-  asr/               # faster-whisper wrapper (interface + impl)
+  gradio_app.py      # 2-tab web demo (real-time call + intercom)
+  voice_call.py      # server-side half-duplex streaming call session
+  config.py          # .env loading (ASR/TTS engine, MIC_GAIN, Groq keys, …)
+  audio/             # recorder, stream (real-time VAD endpointing), vad, playback
+  asr/               # create_asr factory + FasterWhisperASR (local) + GroqASR (cloud)
   llm/               # Ollama client, versioned prompts
-  dialogue/          # engine (LangGraph), graph, nodes, state, categories, values, intent, extraction,
-                     # exceptions, response, post_call
+  dialogue/          # engine (LangGraph), graph, state, categories, values, extraction,
+                     # response, post_call
   normalization/     # spoken-Vietnamese number/plate/VIN normalization
   models/            # Pydantic schemas (data contract)
-  tts/               # Piper (interface + pluggable impls)
+  tts/               # create_tts factory + PiperTTS (local) + EdgeTTS (cloud) + vixtts stub
   utils/             # logging, latency
+  demo.css           # Gradio demo styling
+scripts/             # setup_asr/setup_tts, mic_check, latency/emergency/nlu measurement
 scenarios/           # evaluation fixtures (turn-by-turn) + audio clips
 tests/               # pytest unit/exception tests
 eval/                # eval runner + metrics + ablation + WER (results committed)
-docs/                # ARCHITECTURE.md, eval_report.md, exceptions.md
+docs/                # ARCHITECTURE.md, MODULE_REFERENCE.md, eval_report.md, exceptions.md
 ```
+
+A per-file technical reference is in [docs/MODULE_REFERENCE.md](docs/MODULE_REFERENCE.md).
 
 ---
 
@@ -141,13 +147,13 @@ docs/                # ARCHITECTURE.md, eval_report.md, exceptions.md
 |---|---|
 | Language | Python 3.11 |
 | VAD | silero-vad |
-| ASR | PhoWhisper-medium (CT2/faster-whisper) default; generic faster-whisper fallback |
+| ASR | Pluggable (`create_asr`): PhoWhisper-CT2 local (default) · Groq `whisper-large-v3` cloud (opt-in) |
 | LLM runtime | Ollama |
 | LLM model | Qwen-class 7–8B (+ A/B against a Vietnamese-tuned model) |
 | Structured output | Pydantic v2 + JSON mode |
-| Dialogue | LangGraph StateGraph (deterministic state machine) |
-| TTS (+5) | Piper (local); pluggable interface |
-| Frontend | CLI (dev/eval) + Gradio (demo) |
+| Dialogue | LangGraph StateGraph (deterministic state machine) + robustness backstops |
+| TTS (+5) | Pluggable (`create_tts`): Piper local (default) · Edge neural cloud (opt-in) |
+| Frontend | CLI (`--text`/`--voice`) + 2-tab Gradio (real-time call + intercom) |
 | Eval | pytest + jiwer (WER) + LLM-as-judge |
 
 See [TECHSTACK.md](TECHSTACK.md) for full rationale and trade-offs.
@@ -191,6 +197,22 @@ weights are git-ignored. To skip PhoWhisper, set `ASR_MODEL=medium` (generic fas
 > Audio for `pipeline.turn(audio=…)` must be **16 kHz mono** (live mic capture already is;
 > `from_file()` handles other rates, so WER on 48 kHz clips works).
 
+#### Cloud STT alternative (opt-in, non-canonical)
+
+For quick testing on a CPU laptop without the PhoWhisper download, ASR is pluggable via
+`ASR_ENGINE`. Set `ASR_ENGINE=groq` to use Groq's cloud `whisper-large-v3` (fast, good
+Vietnamese, free key at [console.groq.com](https://console.groq.com)):
+
+```bash
+# .env
+ASR_ENGINE=groq            # default: faster_whisper (local, canonical)
+GROQ_API_KEY=gsk_...
+```
+
+This needs internet, so it **breaks the 100%-local guarantee** — the canonical submission and
+all WER numbers stay on local PhoWhisper (`ASR_ENGINE=faster_whisper`). It mirrors the
+Piper↔Edge TTS swap below.
+
 ### GPU acceleration (optional, big latency win)
 
 On an NVIDIA GPU, run ASR + LLM on the device:
@@ -218,6 +240,18 @@ python scripts/setup_tts.py    # downloads the voice into models/piper/ (git-ign
 Without a voice it returns **silence + a warning** (never a beep), so a missing voice is obvious
 rather than sounding broken. Set `TTS_ENGINE=none` for text-only.
 
+**Voice options** (switch with one `.env` line, no code change):
+
+| `TTS_ENGINE` | Voice | Latency | Use |
+|---|---|---|---|
+| `piper` (default) | local ONNX, robotic | instant | submission default — 100% local, reproducible |
+| `edge` | Microsoft neural (`vi-VN-HoaiMyNeural`) | ~1–3 s (cloud) | natural voice for the demo video; needs internet |
+| `none` | — | — | text-only replies |
+
+`edge` is far more natural but cloud-based — use it for the **recorded demo**; keep `piper` for
+the reproducible submission. `EDGE_VOICE=vi-VN-NamMinhNeural` for a male voice. There is **no**
+free voice that is both instant *and* natural on CPU — that needs a GPU neural TTS.
+
 ### System / external dependencies (not pip)
 
 - **Ollama** — install separately and pull the model: `ollama pull qwen3:8b` (LLM runtime).
@@ -241,6 +275,15 @@ python -m callbot.main --gradio --host 0.0.0.0 --port 7860   # LAN access
 
 Text mode needs only Ollama running. Voice mode additionally needs a microphone, ASR
 weights, and a TTS engine (`TTS_ENGINE=none` for text-only output).
+
+**The Gradio demo has two tabs**, both over the same pipeline:
+
+- **📞 Gọi điện** — hands-free real-time call. Click record once; the bot greets, you talk
+  naturally, it endpoints on your pause, replies aloud, and listens again (half-duplex — wear
+  headphones to avoid echo). Stop recording to see the final JSON.
+- **🎙️ Bộ đàm** — click-to-send intercom. Record a clip *or* type, then "Gửi lượt". More
+  controllable for recording a clean demo; shows live slot state, final JSON, and per-stage
+  latency.
 
 **Voice mode is real-time and half-duplex.** The mic listens continuously; a VAD endpointer
 ends each turn on a trailing pause (no fixed record window), so you just talk naturally — the
