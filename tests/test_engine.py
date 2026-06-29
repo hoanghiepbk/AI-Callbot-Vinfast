@@ -237,7 +237,8 @@ def test_garbled_value_triggers_repeat():
     engine.process("name")
     r3 = engine.process("bad")
 
-    assert "nhắc lại" in r3.reply  # garbled repeat (#5)
+    # garbled repeat (#5): phone parse-fail now re-asks with the 10-digit format hint
+    assert "đọc lại" in r3.reply and "10 chữ số" in r3.reply
     assert r3.state["slots"]["phone"]["status"] == "pending"
 
 
@@ -451,3 +452,58 @@ def test_engine_runs_one_real_turn():
 
     assert isinstance(result.reply, str) and result.reply
     assert result.state["emergency"] is True  # rescue scenario
+
+
+def test_rescue_backstop_routes_g1_when_llm_returns_null():
+    # Regression: qwen3 sometimes returns category=null for a clear breakdown, which would
+    # count as failed turns and escalate to a human (#7) within 2 turns. The deterministic
+    # G_1 keyword backstop must route rescue cues to G_1 instead. The unscripted FakeLLM
+    # returns null (no category, no fields) — the exact worst case.
+    engine = _engine({})
+
+    r1 = engine.process("Xe mình vừa mới bị chết ở giữa đường")
+    assert r1.state["category"] == "G_1"
+    assert r1.state["offer_human"] is False
+
+    r2 = engine.process("Mình cần gọi cứu hộ")
+    assert r2.state["category"] == "G_1"
+    assert r2.state["offer_human"] is False  # must NOT escalate on a clear rescue call
+
+
+def test_keyword_backstop_routes_all_categories_when_llm_returns_null():
+    # Same null-LLM worst case across the other flows (warranty/order/tech). A clear intent
+    # must route, not escalate. Warranty disambiguates car (G_2) vs motorbike (G_4).
+    cases = [
+        ("Mình muốn đặt lịch bảo hành xe", "G_2"),
+        ("xe máy điện của em cần bảo hành", "G_4"),
+        ("em hỏi đơn đặt cọc xe tới đâu rồi", "G_3"),
+        ("màn hình giải trí cứ tự khởi động lại", "G_5"),
+    ]
+    for utterance, expected in cases:
+        engine = _engine({})  # fresh call; unscripted FakeLLM -> null category
+        result = engine.process(utterance)
+        assert result.state["category"] == expected, utterance
+        assert result.state["offer_human"] is False, utterance
+
+
+def test_answer_binding_fills_asked_field_when_llm_extracts_nothing():
+    # The bot asks for a field, the caller answers it, but the (weak) LLM extracts nothing.
+    # The answer-binding backstop must capture the reply for the asked field — with the lead-in
+    # stripped — so the call progresses instead of re-asking and escalating.
+    engine = _engine({})  # unscripted FakeLLM -> null category + empty extraction
+    engine.process("Mình muốn đặt lịch bảo hành")  # -> G_2, asks full_name
+    result = engine.process("Mình là Nguyễn Mai Phương")
+
+    name = result.state["slots"].get("full_name")
+    assert name is not None and name["value"] == "Nguyễn Mai Phương"
+    assert result.state["offer_human"] is False
+
+
+def test_answer_binding_skips_stalling_nonanswer():
+    # A stalling reply ("ừm để xem") must NOT be bound to the asked field — otherwise a hesitant
+    # caller would silently fill a slot and dodge the stuck escalation (#7).
+    engine = _engine({})
+    engine.process("Mình muốn đặt lịch bảo hành")  # asks full_name
+    result = engine.process("ừm để xem")
+
+    assert result.state["slots"].get("full_name") is None  # not bound

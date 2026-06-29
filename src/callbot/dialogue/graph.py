@@ -83,6 +83,176 @@ def _is_greeting(text: str) -> bool:
     return low in {"hi", "hey"} or any(g in low for g in _GREETINGS)
 
 
+# Deterministic category backstop. When the LLM returns no category (qwen3 under-classifies —
+# its prompt is tuned to prefer null), these keyword cues route a CLEAR intent to its category
+# anyway — the same hybrid (LLM OR keyword) rule used for emergency. Fires ONLY on an LLM null,
+# so it can never override the model; it just prevents a clear request being escalated to a
+# human (#7). Phrases are domain-specific (incl. common ASR slips) and ordered by precedence.
+_RESCUE_KEYWORDS = (  # G_1 roadside rescue — breakdown / danger
+    "cứu hộ",
+    "cứu họ",  # ASR slip
+    "cẩu kéo",
+    "kéo xe",
+    "chết máy",
+    "chết ở giữa",
+    "chết giữa đường",
+    "hỏng giữa đường",
+    "nằm giữa đường",
+    "kẹt giữa đường",
+    "hết xăng",
+    "thủng lốp",
+    "nổ lốp",
+    "không nổ máy",
+    "không nổ được máy",
+)
+_TECH_KEYWORDS = (  # G_5 remote tech support — software / app / screen
+    "phần mềm",
+    "ứng dụng",
+    "màn hình",
+    "kết nối",
+    "cập nhật",
+    "định vị",
+    "lỗi app",
+    "không lên màn",
+)
+_ORDER_KEYWORDS = (  # G_3 order status / purchase / dealer
+    "đơn hàng",
+    "đặt cọc",
+    "đơn đặt",
+    "đặt mua",
+    "đại lý",
+    "mã đơn",
+    "tình trạng đơn",
+    "giao xe",
+    "nhận xe",
+    "mua xe",
+)
+_WARRANTY_KEYWORDS = (  # G_2 (car) / G_4 (motorbike) — service / warranty / booking
+    "bảo hành",
+    "giảo hành",  # ASR slip
+    "bảo dưỡng",
+    "bảo trì",
+    "sửa chữa",
+    "sửa xe",
+    "đặt lịch",
+    "trung tâm dịch vụ",
+    "kiểm tra xe",
+)
+_MOTORBIKE_WORDS = (  # disambiguates warranty: motorbike -> G_4, else car -> G_2
+    "xe máy",
+    "xe điện máy",
+    "klara",
+    "vento",
+    "feliz",
+    "evo",
+    "theon",
+    "ludo",
+    "impes",
+)
+
+
+# Lead-ins stripped from a bound free-text answer so the slot stores the value, not the framing
+# ("Mình là Nguyễn Mai Phương" -> "Nguyễn Mai Phương"). Longest-match first.
+_ANSWER_PREFIXES = (
+    "họ và tên của mình là",
+    "họ và tên của em là",
+    "họ và tên mình là",
+    "họ tên của mình là",
+    "tên của mình là",
+    "tên của em là",
+    "số của mình là",
+    "số mình là",
+    "vị trí của mình là",
+    "địa chỉ của mình là",
+    "mình tên là",
+    "em tên là",
+    "tên mình là",
+    "mình là",
+    "em là",
+    "tôi là",
+    "dạ",
+)
+
+
+def _strip_answer_prefix(text: str) -> str:
+    stripped = text.strip()
+    low = stripped.lower()
+    for prefix in sorted(_ANSWER_PREFIXES, key=len, reverse=True):
+        if low.startswith(prefix):
+            rest = stripped[len(prefix) :].strip(" ,.:;")
+            return rest or stripped  # never bind to empty
+    return stripped
+
+
+# Confusion / filler replies that are NOT an answer — must not be bound to the asked field
+# (otherwise a baffled caller's "hả?" would fill a slot and dodge the stuck escalation #7).
+_NON_ANSWERS = {
+    "huh",
+    "hả",
+    "gì",
+    "gì cơ",
+    "gì vậy",
+    "gì thế",
+    "sao",
+    "sao cơ",
+    "um",
+    "ừm",
+    "ờ",
+    "à",
+    "ơ",
+    "dạ",
+    "vâng",
+    "không biết",
+    "hổng biết",
+    "chịu",
+    "?",
+}
+
+
+# Hesitation/stalling openers: an utterance that IS one of these, or starts with one as a word,
+# is a stall ("ừm để xem", "để xem sao"), not an answer — so it must not be bound (keeps the
+# stuck escalation #7 working on a stalling caller).
+_HESITATION_STEMS = (
+    "ừm",
+    "ờ",
+    "à",
+    "ơ",
+    "ừ",
+    "hmm",
+    "để xem",
+    "để tôi",
+    "để em",
+    "để mình",
+    "khoan",
+    "đợi",
+    "chưa nghĩ",
+    "chưa biết",
+)
+
+
+def _is_non_answer(text: str) -> bool:
+    low = text.strip().lower().rstrip(".!,? ")
+    if low in _NON_ANSWERS:
+        return True
+    return any(low == stem or low.startswith(stem + " ") for stem in _HESITATION_STEMS)
+
+
+def _keyword_category(text: str) -> str | None:
+    low = text.lower()
+    if any(kw in low for kw in _RESCUE_KEYWORDS):
+        return "G_1"
+    if any(kw in low for kw in _TECH_KEYWORDS):
+        return "G_5"
+    if any(kw in low for kw in _ORDER_KEYWORDS):
+        return "G_3"
+    is_motorbike = any(m in low for m in _MOTORBIKE_WORDS)
+    if any(kw in low for kw in _WARRANTY_KEYWORDS):
+        return "G_4" if is_motorbike else "G_2"
+    if is_motorbike:  # motorbike mentioned without an explicit service word
+        return "G_4"
+    return None
+
+
 def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
     """Compile the turn-loop graph with llm/normalizer injected into the nodes."""
 
@@ -107,7 +277,13 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
             return {}  # category already locked, keep it
         if state.nlu_category is not None:
             return {"category": state.nlu_category}
-        # No category yet and the model couldn't pick one -> ask one clarifying question.
+        # LLM returned no category. Deterministic rescue backstop before giving up: a clear
+        # breakdown ("chết máy", "cần cứu hộ"…) routes to G_1. Set nlu_category too so this
+        # counts as a classified turn (not a no-progress failure in slot_update / stuck_check).
+        kw_cat = _keyword_category(state.user_text)
+        if kw_cat is not None:
+            return {"category": kw_cat, "nlu_category": kw_cat}
+        # Still nothing -> ask one clarifying question (#3).
         return {"need_clarify": True}
 
     def slot_update(state: CallState) -> dict[str, Any]:
@@ -115,6 +291,27 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
             return {}
         slots = dict(state.slots)
         provided = {**state.extracted, **state.corrected}  # corrections are values too
+
+        # Answer-binding backstop: the bot asked for a specific field last turn but the LLM
+        # extracted nothing for it. If the caller's reply is a direct answer (not a denial /
+        # correction / topic change / digression), bind the (de-prefixed) utterance to that
+        # field so a weak extractor cannot stall the call and escalate. Read-back numeric fields
+        # still flow through normalize + confirm below.
+        asked = state.last_asked_field
+        if (
+            asked is not None
+            and not provided  # bind ONLY when the LLM extracted nothing (else trust the LLM)
+            and state.user_text.strip()
+            and not _is_non_answer(state.user_text)
+            and not _is_denial(state.user_text)
+            and not state.signals.correction
+            and not state.signals.out_of_scope
+            and not state.signals.hangup
+            and not _is_greeting(state.user_text)
+            and state.nlu_category in (None, state.category)
+        ):
+            provided = {asked: _strip_answer_prefix(state.user_text)}
+
         new_pending: str | None = None
         new_reason: str | None = None
         turn_failed = False
@@ -205,11 +402,17 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
             prefix = tmpl.emergency_msg() + " "
             announced = True
 
-        def out(reply: str, done: bool = False) -> dict[str, Any]:
-            return {"reply": prefix + reply, "done": done, "emergency_announced": announced}
+        def out(reply: str, done: bool = False, asked: str | None = None) -> dict[str, Any]:
+            # `asked` = the field this reply requests, remembered for next turn's answer-binding.
+            return {
+                "reply": prefix + reply,
+                "done": done,
+                "emergency_announced": announced,
+                "last_asked_field": asked,
+            }
 
         if state.signals.hangup:  # (#8) caller wants to stop -> goodbye, engine finalizes
-            return {"reply": tmpl.closing_goodbye(ti), "done": True}
+            return {"reply": tmpl.closing_goodbye(ti), "done": True, "last_asked_field": None}
         if state.signals.out_of_scope:  # (#4) redirect at ANY point, keep collected state
             return out(tmpl.redirect(ti))
         if state.offer_human:  # (#7) stuck
@@ -226,7 +429,8 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
                 return out(tmpl.greeting(ti))
             return out(tmpl.clarify(ti))
         if state.current_field is not None:
-            return out(tmpl.ask_field(state.current_field, ti))
+            # Remember the asked field so next turn can bind a bare answer to it.
+            return out(tmpl.ask_field(state.current_field, ti), asked=state.current_field)
         return out(tmpl.closing_done(ti), done=True)  # all required fields collected
 
     graph = StateGraph(CallState)

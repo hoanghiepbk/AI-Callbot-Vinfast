@@ -23,6 +23,7 @@ class CallState(BaseModel):
     transcript: list[str] = []
     pending_field: str | None = None  # field awaiting readback/repeat confirmation
     pending_reason: str | None = None  # "readback" (D10) | "garbled" (#5)
+    last_asked_field: str | None = None  # field the bot asked last turn (answer-binding backstop)
 
     # ---- transient (one turn; reset by engine before each invoke) ----
     user_text: str = ""

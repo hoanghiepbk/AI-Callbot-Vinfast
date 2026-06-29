@@ -63,3 +63,14 @@ try:
     MIC_GAIN = float(os.environ.get("MIC_GAIN", "1.0"))
 except ValueError:
     MIC_GAIN = 1.0
+
+# ASR backend selection. "faster_whisper" (default) = local PhoWhisper/Whisper — the canonical,
+# offline, reproducible submission. "groq" = cloud whisper-large-v3 (OpenAI-compatible): fast +
+# good Vietnamese, no local model, but needs internet + GROQ_API_KEY (non-canonical, dev/demo).
+ASR_ENGINE = os.environ.get("ASR_ENGINE", "faster_whisper").strip().lower() or "faster_whisper"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "whisper-large-v3").strip() or "whisper-large-v3"
+GROQ_BASE_URL = (
+    os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1").strip()
+    or "https://api.groq.com/openai/v1"
+)

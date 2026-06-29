@@ -66,7 +66,7 @@ def test_endpoints_on_trailing_silence(monkeypatch):
     audio = np.concatenate([_speech(5), _silence(30)])
     _install_fake_sd(monkeypatch, audio)
 
-    utterance = StreamingMicrophone().listen_utterance(max_wait_seconds=2.0)
+    utterance = StreamingMicrophone(gain=1.0).listen_utterance(max_wait_seconds=2.0)
 
     assert utterance is not None
     # Captured buffer starts at speech and ends once the silence window is hit.
@@ -76,7 +76,7 @@ def test_endpoints_on_trailing_silence(monkeypatch):
 def test_pure_silence_returns_none(monkeypatch):
     _install_fake_sd(monkeypatch, _silence(3))
 
-    utterance = StreamingMicrophone().listen_utterance(max_wait_seconds=0.3)
+    utterance = StreamingMicrophone(gain=1.0).listen_utterance(max_wait_seconds=0.3)
 
     assert utterance is None
 
@@ -88,7 +88,7 @@ def test_transient_noise_does_not_arm_capture(monkeypatch):
     audio = np.concatenate([_speech(2), _silence(20)])
     _install_fake_sd(monkeypatch, audio)
 
-    utterance = StreamingMicrophone().listen_utterance(max_wait_seconds=0.3)
+    utterance = StreamingMicrophone(gain=1.0).listen_utterance(max_wait_seconds=0.3)
 
     assert utterance is None
 
@@ -100,7 +100,7 @@ def test_preroll_keeps_quiet_onset(monkeypatch):
     audio = np.concatenate([quiet, _speech(5), _silence(30)])
     _install_fake_sd(monkeypatch, audio)
 
-    utterance = StreamingMicrophone().listen_utterance(max_wait_seconds=2.0)
+    utterance = StreamingMicrophone(gain=1.0).listen_utterance(max_wait_seconds=2.0)
 
     assert utterance is not None
     # The buffer opens with the quiet lead-in (pre-roll), not with speech-level energy.
@@ -134,10 +134,10 @@ def test_readback_field_uses_longer_silence_window(monkeypatch):
     audio = np.concatenate([_speech(5), _silence(30)])
 
     _install_fake_sd(monkeypatch, audio)
-    default_capture = StreamingMicrophone().listen_utterance(max_wait_seconds=2.0)
+    default_capture = StreamingMicrophone(gain=1.0).listen_utterance(max_wait_seconds=2.0)
 
     _install_fake_sd(monkeypatch, audio)
-    readback_capture = StreamingMicrophone().listen_utterance(
+    readback_capture = StreamingMicrophone(gain=1.0).listen_utterance(
         field_name="phone", max_wait_seconds=2.0, max_utterance_seconds=0.4
     )
 
