@@ -300,7 +300,8 @@ footer { display: none !important; }
    fixed-height container, so forcing a taller button made Stop overflow and get clipped in half. */
 .vf-micbox .stop-button, .vf-micbox .stop-button-paused, .vf-micbox button.stop-button {
   background: #fff !important; color: #E0344B !important; border: 2px solid #E0344B !important;
-  border-radius: 10px !important; padding: 0 18px !important; font-weight: 700 !important;
+  border-radius: 10px !important; padding: 0 16px !important; font-weight: 700 !important;
+  width: auto !important; justify-content: center !important; text-align: center !important;
 }
 .vf-micbox .stop-button *, .vf-micbox .stop-button-paused * { background: transparent !important; }
 /* Hide the recorder's pause control: while recording it shows up as an orphaned, unstyled "II"
