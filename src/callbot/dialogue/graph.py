@@ -415,8 +415,10 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
             return {"reply": tmpl.closing_goodbye(ti), "done": True, "last_asked_field": None}
         if state.signals.out_of_scope:  # (#4) redirect at ANY point, keep collected state
             return out(tmpl.redirect(ti))
-        if state.offer_human:  # (#7) stuck
-            return out(tmpl.offer_human(ti))
+        if state.offer_human:  # (#7) stuck -> offer human, then END the call (transfer).
+            # done=True so the engine finalizes partial JSON instead of repeating the offer
+            # forever — a stuck call cannot make progress, so handing off is terminal.
+            return out(tmpl.offer_human(ti), done=True)
         if state.pending_field is not None:
             if state.pending_reason == "garbled":
                 return out(tmpl.garbled_repeat(state.pending_field, ti))

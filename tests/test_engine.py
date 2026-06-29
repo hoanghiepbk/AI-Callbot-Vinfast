@@ -403,6 +403,28 @@ def test_stuck_two_no_progress_turns_offers_human():
     assert "tổng đài viên" in r3.reply
 
 
+def test_stuck_escalation_ends_the_call_with_partial_json():
+    # (#7) After offering the human transfer the call must TERMINATE — not loop the offer
+    # forever — and finalize partial JSON (collected fields kept, missing -> null, like #8).
+    script = {
+        "intro": nlu_payload(category="G_3"),
+        "name": nlu_payload(extracted={"full_name": "Tran Van Hung"}),
+        "huh": nlu_payload(),
+        "um": nlu_payload(),
+    }
+    engine = _engine(script)
+    engine.process("intro")
+    engine.process("name")  # one real field collected
+    engine.process("huh")  # failed 1
+    r4 = engine.process("um")  # failed 2 -> escalate AND end
+
+    assert r4.state["offer_human"] is True
+    assert r4.done is True  # call ends on the hand-off (no infinite offer loop)
+    final = engine.finalize()
+    assert final.fields["full_name"] == "Tran Van Hung"  # partial JSON keeps what was collected
+    assert final.fields["order_phone"] is None  # never collected -> null
+
+
 def test_stuck_two_garbled_turns_offers_human():
     script = {
         "intro": nlu_payload(category="G_4"),

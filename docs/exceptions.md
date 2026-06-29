@@ -14,7 +14,7 @@ Each row lists the mechanism, where it lives, and the eval scenario that covers 
 | **#4** | Out-of-scope | `signals.out_of_scope` → polite redirect **at any point in the call** (category locked or not); collected state is kept so the caller can resume | `respond` (`redirect`) | `adv_oos_midcall` |
 | **#5** | Garbled / unparseable value | `normalize_field` returns `parse_failed` → slot stays `PENDING`, bot asks the caller to repeat | `slot_update` → `garbled_repeat` | `adv_garbled_repeat` |
 | **#6** | Emergency | Hybrid: `signals.emergency` **OR** keyword backstop (`_EMERGENCY_KEYWORDS`, in code+tested) → sticky `emergency`; skips fields with `priority >= 90`, **defers readback**, speaks hotline once | `apply_signals` + `respond` (`emergency_msg`) | `adv_calm_emergency` |
-| **#7** | Stuck (no progress 2+ turns) | Any non-progress turn — garbled, denied readback, empty NLU, nothing extracted — sets `turn_failed`; `failed_turns >= 2` → offer a human. OOS/hangup are digressions, not failures | `slot_update` + `stuck_check` → `offer_human` | `adv_stuck_offer_human` |
+| **#7** | Stuck (no progress 2+ turns) | Any non-progress turn — garbled, denied readback, empty NLU, nothing extracted — sets `turn_failed`; `failed_turns >= 2` → offer a human **and end the call** (`done`) so the offer is not repeated forever; `finalize()` emits partial JSON like #8. OOS/hangup are digressions, not failures | `slot_update` + `stuck_check` → `offer_human` | `adv_stuck_offer_human` |
 | **#8** | Hangup mid-call | `signals.hangup` → goodbye + `done`; `finalize()` emits partial `FinalOutput`, unfilled fields = `null` | `respond` + `DialogueEngine.finalize` | `adv_hangup_midway` |
 
 ## Readback (D10) — safety sub-protocol on top of #5/#2
