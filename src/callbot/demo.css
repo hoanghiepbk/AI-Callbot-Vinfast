@@ -189,8 +189,12 @@ footer { display: none !important; }
 /* ---- Mic box framing the gradio Audio recorder ---- */
 .vf-micbox {
   background: #FBF8F9 !important; border: 1px solid #F2E4E7 !important;
-  border-radius: 16px !important; padding: 14px !important;
+  border-radius: 16px !important; padding: 12px 14px !important;
 }
+/* Hide Gradio's per-device mic picker inside the call box: it truncates to an ugly
+   "No microphone f..." and the demo just records from the default device. */
+.vf-micbox .device-select-large, .vf-micbox .device-selection-wrapper,
+.vf-micbox .mic-select, .vf-micbox .source-selection { display: none !important; }
 .vf-wave { display: flex; align-items: center; gap: 3px; height: 34px; margin-top: 10px; }
 .vf-wave i {
   flex: 0 0 auto; width: 3px; border-radius: 3px; background: #E0344B;
@@ -265,12 +269,12 @@ footer { display: none !important; }
   box-shadow: 0 12px 24px -10px rgba(26, 99, 224, .6) !important;
 }
 .vf-end button {
-  background: #fff !important; color: #E0344B !important; border: 1px solid #F0D7DB !important;
-  border-radius: 13px !important; font-weight: 600 !important;
+  background: #FEF2F3 !important; color: #D8344A !important; border: 1.5px solid #F2C7CE !important;
+  border-radius: 13px !important; font-weight: 700 !important;
 }
 .vf-reset button {
-  background: #F1F5FB !important; color: #37455E !important; border: 1px solid #E1E7F1 !important;
-  border-radius: 13px !important; font-weight: 600 !important;
+  background: #EEF3FA !important; color: #2B3B57 !important; border: 1.5px solid #D5DFEE !important;
+  border-radius: 13px !important; font-weight: 700 !important;
 }
 
 /* ---- Make Gradio's mic record/stop buttons big and obvious (default ones are tiny + low

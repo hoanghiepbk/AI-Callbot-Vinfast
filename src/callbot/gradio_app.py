@@ -340,7 +340,6 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                                         type="numpy",
                                         show_label=False,
                                     )
-                                    gr.HTML(_wave_html())
                                 gr.HTML(_label("record_voice_over", "Khách vừa nói"))
                                 call_user = gr.HTML(_user_said_html(""))
                         with gr.Column(scale=1, min_width=330):
@@ -402,7 +401,6 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                                         type="numpy",
                                         show_label=False,
                                     )
-                                    gr.HTML(_wave_html())
                                 gr.HTML(_label("keyboard", "Hoặc gõ câu của khách"))
                                 text = gr.Textbox(
                                     show_label=False,
