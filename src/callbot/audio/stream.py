@@ -29,6 +29,84 @@ from callbot.models.schemas import READBACK_REQUIRED
 _PREROLL_MS = 150
 
 
+class VadEndpointer:
+    """Frame-by-frame energy-VAD endpointing state machine.
+
+    Shared by the CLI pull-loop (`StreamingMicrophone`, reading frames off a sounddevice
+    stream) and the browser push-stream (the Gradio voice-call tab, feeding frames decoded
+    from streamed mic chunks). Feed mono float32 frames of ``frame_size`` samples via
+    :meth:`push_frame`; it returns the captured utterance the moment speech is followed by a
+    trailing pause, else ``None``, and auto-resets so the same instance handles the next turn.
+
+    A candidate onset must reach ``min_speech_frames`` CONSECUTIVE speech frames to confirm (so
+    a transient click never arms a capture), and a ``_PREROLL_MS`` ring buffer is prepended so a
+    soft word-initial consonant is not clipped. ``field_name`` arms the longer numeric-field
+    silence window for read-back fields (phone/plate/VIN).
+    """
+
+    def __init__(
+        self, vad_config: VADConfig | None = None, *, field_name: str | None = None
+    ) -> None:
+        cfg = vad_config or VADConfig()
+        self.frame_size = max(1, int(cfg.sample_rate * cfg.frame_ms / 1000))
+        self.threshold = cfg.threshold
+        silence_ms = (
+            cfg.numeric_field_silence_ms if field_name in READBACK_REQUIRED else cfg.silence_ms
+        )
+        self.max_silent_frames = max(1, int(silence_ms / cfg.frame_ms))
+        self.min_speech_frames = max(1, int(cfg.min_speech_ms / cfg.frame_ms))
+        self.preroll_frames = max(1, int(_PREROLL_MS / cfg.frame_ms))
+        self.reset()
+
+    def reset(self) -> None:
+        self.started = False
+        self._preroll: deque[np.ndarray] = deque(maxlen=self.preroll_frames)
+        self._candidate: list[np.ndarray] = []
+        self._collected: list[np.ndarray] = []
+        self._pending_speech = 0
+        self._silent_frames = 0
+
+    def push_frame(self, frame: np.ndarray) -> np.ndarray | None:
+        """Process one ``frame_size`` frame; return the utterance when it ends, else None."""
+        is_speech = float(np.sqrt(np.mean(frame * frame))) >= self.threshold
+
+        if not self.started:
+            if is_speech:
+                self._candidate.append(frame)
+                self._pending_speech += 1
+                if self._pending_speech >= self.min_speech_frames:
+                    # Confirmed onset: prepend the pre-roll so the quiet lead-in of the first
+                    # word is not clipped.
+                    self.started = True
+                    self._collected = list(self._preroll) + self._candidate
+                    self._silent_frames = 0
+            else:
+                # Candidate run broke before confirming -> a transient, not speech. Drop it and
+                # keep waiting (no false capture, no hang).
+                self._candidate.clear()
+                self._pending_speech = 0
+                self._preroll.append(frame)
+            return None
+
+        self._collected.append(frame)
+        if is_speech:
+            self._silent_frames = 0
+        else:
+            self._silent_frames += 1
+            if self._silent_frames >= self.max_silent_frames:
+                return self._flush()
+        return None
+
+    def flush(self) -> np.ndarray | None:
+        """Force-return any collected speech (e.g. on a wall-clock cap), then reset."""
+        return self._flush() if self.started and self._collected else None
+
+    def _flush(self) -> np.ndarray:
+        utterance = np.concatenate(self._collected)
+        self.reset()
+        return utterance
+
+
 class StreamingMicrophone:
     """Continuous mic + energy VAD endpointing.
 
@@ -69,38 +147,19 @@ class StreamingMicrophone:
         except ImportError as exc:  # pragma: no cover - optional runtime dependency
             raise RuntimeError("sounddevice is required for microphone capture") from exc
 
-        sr = self.recorder_config.sample_rate
-        frame_ms = self.vad_config.frame_ms
-        frame_size = max(1, int(sr * frame_ms / 1000))
-        threshold = self.vad_config.threshold
-        silence_ms = (
-            self.vad_config.numeric_field_silence_ms
-            if field_name in READBACK_REQUIRED
-            else self.vad_config.silence_ms
-        )
-        max_silent_frames = max(1, int(silence_ms / frame_ms))
-        min_speech_frames = max(1, int(self.vad_config.min_speech_ms / frame_ms))
-        preroll_frames = max(1, int(_PREROLL_MS / frame_ms))
+        endpointer = VadEndpointer(self.vad_config, field_name=field_name)
+        frame_size = endpointer.frame_size
 
         frames: "queue.Queue[np.ndarray]" = queue.Queue()
 
         def _callback(indata, _frames, _time_info, _status) -> None:  # noqa: ANN001
             frames.put(np.asarray(indata, dtype=np.float32).reshape(-1).copy())
 
-        collected: list[np.ndarray] = []
         leftover = np.empty(0, dtype=np.float32)
-        # Pre-onset state: a candidate run must reach min_speech_frames CONSECUTIVE speech
-        # frames to confirm a real onset — a transient (click/keystroke) never does, so it can
-        # no longer arm a capture that then hangs until the wall-clock cap.
-        preroll: "deque[np.ndarray]" = deque(maxlen=preroll_frames)
-        candidate: list[np.ndarray] = []
-        pending_speech = 0
-        started = False
-        silent_frames = 0
         wall_start = time.perf_counter()
 
         with sd.InputStream(
-            samplerate=sr,
+            samplerate=self.recorder_config.sample_rate,
             channels=self.recorder_config.channels,
             dtype=self.recorder_config.dtype,
             blocksize=frame_size,
@@ -120,37 +179,13 @@ class StreamingMicrophone:
                         # Boost quiet mics so speech clears the VAD threshold and ASR gets a
                         # healthy level; clip to keep the buffer in valid [-1, 1] float range.
                         frame = np.clip(frame * self.gain, -1.0, 1.0)
-                    is_speech = float(np.sqrt(np.mean(frame * frame))) >= threshold
-
-                    if not started:
-                        if is_speech:
-                            candidate.append(frame)
-                            pending_speech += 1
-                            if pending_speech >= min_speech_frames:
-                                # Confirmed onset: prepend the pre-roll so the quiet lead-in of
-                                # the first word is not clipped.
-                                started = True
-                                collected = list(preroll) + candidate
-                                silent_frames = 0
-                        else:
-                            # Candidate run broke before confirming -> a transient, not speech.
-                            # Drop it and keep waiting (no false capture, no 20s hang).
-                            candidate.clear()
-                            pending_speech = 0
-                            preroll.append(frame)
-                        continue
-
-                    collected.append(frame)
-                    if is_speech:
-                        silent_frames = 0
-                    else:
-                        silent_frames += 1
-                        if silent_frames >= max_silent_frames:
-                            return np.concatenate(collected)
+                    utterance = endpointer.push_frame(frame)
+                    if utterance is not None:
+                        return utterance
 
                 elapsed = time.perf_counter() - wall_start
-                if not started and elapsed >= max_wait_seconds:
+                if not endpointer.started and elapsed >= max_wait_seconds:
                     return None
                 # Wall-clock safety cap: never hang on a runaway turn or a dead mic.
-                if started and elapsed >= max_utterance_seconds:
-                    return np.concatenate(collected)
+                if endpointer.started and elapsed >= max_utterance_seconds:
+                    return endpointer.flush()
