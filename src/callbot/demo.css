@@ -302,6 +302,9 @@ footer { display: none !important; }
   padding: 0 22px !important; font-weight: 700 !important;
 }
 .vf-micbox .stop-button *, .vf-micbox .stop-button-paused * { background: transparent !important; }
+/* Hide the recorder's pause control: while recording it shows up as an orphaned, unstyled "II"
+   icon next to Stop, and a record-then-send turn never needs to pause mid-recording. */
+.vf-micbox .pause-button { display: none !important; }
 
 /* ---- Tablet / small laptop: stack the two cards and declutter the header ---- */
 @media (max-width: 860px) {
