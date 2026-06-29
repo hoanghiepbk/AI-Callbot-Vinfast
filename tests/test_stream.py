@@ -65,6 +65,32 @@ def test_pure_silence_returns_none(monkeypatch):
     assert utterance is None
 
 
+def test_transient_noise_does_not_arm_capture(monkeypatch):
+    # A 2-frame click (< min_speech = 4 frames) then silence must NOT start a capture.
+    # Regression: a single loud frame armed `started`, which then never endpointed and hung
+    # until the 20s wall-clock cap. The candidate must be discarded -> treated as silence.
+    audio = np.concatenate([_speech(2), _silence(20)])
+    _install_fake_sd(monkeypatch, audio)
+
+    utterance = StreamingMicrophone().listen_utterance(max_wait_seconds=0.3)
+
+    assert utterance is None
+
+
+def test_preroll_keeps_quiet_onset(monkeypatch):
+    # 3 sub-threshold frames (a soft word onset), then speech. The capture must prepend the
+    # pre-roll so it begins BEFORE the first above-threshold frame, not clip the onset.
+    quiet = np.full(3 * _FRAME, 0.002, dtype=np.float32)  # RMS 0.002 < threshold 0.01
+    audio = np.concatenate([quiet, _speech(5), _silence(30)])
+    _install_fake_sd(monkeypatch, audio)
+
+    utterance = StreamingMicrophone().listen_utterance(max_wait_seconds=2.0)
+
+    assert utterance is not None
+    # The buffer opens with the quiet lead-in (pre-roll), not with speech-level energy.
+    assert float(np.max(np.abs(utterance[:_FRAME]))) < 0.01
+
+
 def test_readback_field_uses_longer_silence_window(monkeypatch):
     # 5 speech frames + a 900ms pause (30 frames). The default 700ms window would
     # endpoint here and cut the buffer short; the numeric read-back window (1200ms)

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import queue
 import time
+from collections import deque
 
 import numpy as np
 
@@ -22,6 +23,10 @@ from callbot import config
 from callbot.audio.recorder import RecorderConfig
 from callbot.audio.vad import VADConfig
 from callbot.models.schemas import READBACK_REQUIRED
+
+# Audio kept BEFORE a confirmed speech onset so a soft word-initial consonant (h/ph/x/s) is
+# not clipped when collection starts. ~150 ms covers a typical onset.
+_PREROLL_MS = 150
 
 
 class StreamingMicrophone:
@@ -75,6 +80,7 @@ class StreamingMicrophone:
         )
         max_silent_frames = max(1, int(silence_ms / frame_ms))
         min_speech_frames = max(1, int(self.vad_config.min_speech_ms / frame_ms))
+        preroll_frames = max(1, int(_PREROLL_MS / frame_ms))
 
         frames: "queue.Queue[np.ndarray]" = queue.Queue()
 
@@ -83,8 +89,13 @@ class StreamingMicrophone:
 
         collected: list[np.ndarray] = []
         leftover = np.empty(0, dtype=np.float32)
+        # Pre-onset state: a candidate run must reach min_speech_frames CONSECUTIVE speech
+        # frames to confirm a real onset — a transient (click/keystroke) never does, so it can
+        # no longer arm a capture that then hangs until the wall-clock cap.
+        preroll: "deque[np.ndarray]" = deque(maxlen=preroll_frames)
+        candidate: list[np.ndarray] = []
+        pending_speech = 0
         started = False
-        speech_frames = 0
         silent_frames = 0
         wall_start = time.perf_counter()
 
@@ -113,22 +124,28 @@ class StreamingMicrophone:
 
                     if not started:
                         if is_speech:
-                            started = True
-                            speech_frames = 1
-                            silent_frames = 0
-                            collected.append(frame)
+                            candidate.append(frame)
+                            pending_speech += 1
+                            if pending_speech >= min_speech_frames:
+                                # Confirmed onset: prepend the pre-roll so the quiet lead-in of
+                                # the first word is not clipped.
+                                started = True
+                                collected = list(preroll) + candidate
+                                silent_frames = 0
+                        else:
+                            # Candidate run broke before confirming -> a transient, not speech.
+                            # Drop it and keep waiting (no false capture, no 20s hang).
+                            candidate.clear()
+                            pending_speech = 0
+                            preroll.append(frame)
                         continue
 
                     collected.append(frame)
                     if is_speech:
-                        speech_frames += 1
                         silent_frames = 0
                     else:
                         silent_frames += 1
-                        if (
-                            speech_frames >= min_speech_frames
-                            and silent_frames >= max_silent_frames
-                        ):
+                        if silent_frames >= max_silent_frames:
                             return np.concatenate(collected)
 
                 elapsed = time.perf_counter() - wall_start
