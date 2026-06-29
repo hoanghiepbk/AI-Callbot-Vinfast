@@ -131,8 +131,9 @@ class VoiceCallSession:
         self._mute_for(result.reply_audio)
         # Arm the longer silence window when the next field is a read-back number, so a
         # mid-number pause does not cut the caller off; also drop any audio buffered mid-turn.
+        # rearm() (not a fresh endpointer) preserves the adaptive noise calibration across turns.
         next_field = result.state.get("current_field") or result.state.get("pending_field")
-        self._endpointer = VadEndpointer(self._vad_config, field_name=next_field, adaptive=True)
+        self._endpointer.rearm(next_field)
         self._leftover = np.empty(0, dtype=np.float32)
         self._utt_frames = 0
         return result

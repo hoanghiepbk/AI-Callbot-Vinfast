@@ -67,6 +67,10 @@ class VadEndpointer:
         cfg = vad_config or VADConfig()
         self.frame_size = max(1, int(cfg.sample_rate * cfg.frame_ms / 1000))
         self.threshold = cfg.threshold
+        # Keep the cfg-derived silence windows so rearm() can switch between them per turn.
+        self._frame_ms = cfg.frame_ms
+        self._default_silence_ms = cfg.silence_ms
+        self._numeric_silence_ms = cfg.numeric_field_silence_ms
         silence_ms = (
             cfg.numeric_field_silence_ms if field_name in READBACK_REQUIRED else cfg.silence_ms
         )
@@ -78,13 +82,28 @@ class VadEndpointer:
         self.reset()
 
     def reset(self) -> None:
+        """Full reset for a NEW call — also forgets the ambient-noise estimate."""
+        self._reset_utterance()
+        self._recent_rms: deque[float] = deque(maxlen=self.noise_window)
+
+    def _reset_utterance(self) -> None:
+        """Reset only the per-utterance capture state; the rolling noise estimate is KEPT so
+        adaptive calibration carries across consecutive turns (see :meth:`rearm`)."""
         self.started = False
         self._preroll: deque[np.ndarray] = deque(maxlen=self.preroll_frames)
         self._candidate: list[np.ndarray] = []
         self._collected: list[np.ndarray] = []
         self._pending_speech = 0
         self._silent_frames = 0
-        self._recent_rms: deque[float] = deque(maxlen=self.noise_window)
+
+    def rearm(self, field_name: str | None = None) -> None:
+        """Ready the endpointer for the next turn of the SAME call: switch the silence window
+        to ``field_name``'s (longer for read-back numbers) and clear capture state, but PRESERVE
+        the ambient-noise calibration so an AGC mic does not re-converge from scratch each turn."""
+        numeric = field_name in READBACK_REQUIRED
+        silence_ms = self._numeric_silence_ms if numeric else self._default_silence_ms
+        self.max_silent_frames = max(1, int(silence_ms / self._frame_ms))
+        self._reset_utterance()
 
     def _speech_floor(self) -> float:
         """Energy a frame must clear to count as speech: the fixed threshold, or the rolling
@@ -134,7 +153,7 @@ class VadEndpointer:
 
     def _flush(self) -> np.ndarray:
         utterance = np.concatenate(self._collected)
-        self.reset()
+        self._reset_utterance()  # keep the noise estimate for the next utterance of this call
         return utterance
 
 
