@@ -239,7 +239,7 @@ class CallbotPipeline:
                 # (voice loop) sees empty user_text and simply keeps listening.
                 return PipelineTurnResult(
                     user_text="",
-                    reply="",
+                    reply_text="",
                     done=False,
                     state={},
                     asr_latency_ms=asr_latency_ms,

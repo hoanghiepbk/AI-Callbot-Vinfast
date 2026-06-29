@@ -36,6 +36,13 @@ class _StubASR:
         return ASRResult(text="xin chao", confidence=0.9, latency_ms=12.0)
 
 
+class _EmptyASR:
+    """ASR that filtered out all non-speech (silence/noise) -> empty transcript."""
+
+    def transcribe(self, audio, sample_rate: int = 16000) -> ASRResult:
+        return ASRResult(text="", confidence=0.0, latency_ms=1.0)
+
+
 class _StrictASR:
     """Mirrors FasterWhisperASR's contract: rejects non-16k audio, records what it received."""
 
@@ -147,6 +154,19 @@ def test_mic_48k_int16_path_does_not_crash() -> None:
     assert turn.user_text == "ok"
     assert asr.got_sr == 16000  # pipeline resampled before ASR (no ValueError)
     assert asr.got_dtype == np.float32
+
+
+def test_empty_asr_short_circuits_without_engine_or_crash() -> None:
+    # Silence/noise -> ASR returns "" -> pipeline skips the engine and returns an empty
+    # result. Regression: the short-circuit built PipelineTurnResult(reply=...) but the
+    # field is reply_text, so an empty-ASR turn raised a ValidationError at runtime.
+    pipeline = CallbotPipeline(engine=_engine(), asr=_EmptyASR(), tts=None)
+
+    turn = pipeline.turn(audio=(16000, np.zeros(16000, dtype=np.int16)), play_audio=False)
+
+    assert turn.user_text == ""
+    assert turn.reply_text == ""
+    assert turn.done is False
 
 
 def test_warmup_pipeline_warms_asr_and_resets_state() -> None:
