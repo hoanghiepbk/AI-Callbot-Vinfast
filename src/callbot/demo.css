@@ -1,0 +1,185 @@
+/* Design tokens + chrome, adapted from the Claude Design mockup. Fonts/icons load from Google
+   Fonts — UI only; the bot pipeline stays 100% local. Loaded by gradio_app.create_demo and
+   passed to Blocks.launch(css=...). */
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,0..1,0&display=swap');
+
+.gradio-container {
+  max-width: 1240px !important;
+  margin: 0 auto !important;
+  background: radial-gradient(150% 120% at 50% -20%, #F0F4FB 0%, #E7ECF5 55%, #E0E6F1 100%) !important;
+  color: #0F1B2D;
+}
+footer { display: none !important; }
+.ms {
+  font-family: 'Material Symbols Rounded';
+  font-weight: 400; font-style: normal; line-height: 1; white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+}
+
+/* Header bar */
+.vf-header {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 13px 20px;
+  background: rgba(255, 255, 255, .85); border: 1px solid #E2E8F2; border-radius: 16px;
+}
+.vf-logo {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: linear-gradient(135deg, #0A1B45, #1A63E0);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 15px; letter-spacing: .04em;
+  box-shadow: 0 6px 16px -4px rgba(26, 99, 224, .5); flex: 0 0 auto;
+}
+.vf-brand { display: flex; flex-direction: column; line-height: 1.15; }
+.vf-brand small { font-size: 11px; font-weight: 700; letter-spacing: .16em; color: #8493AE; }
+.vf-brand b { font-size: 16px; font-weight: 700; color: #0F1B2D; }
+.vf-h-spacer { flex: 1 1 20px; }
+.vf-online { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #1FA971; }
+.vf-online i {
+  width: 8px; height: 8px; border-radius: 50%; background: #1FA971;
+  box-shadow: 0 0 0 4px rgba(31, 169, 113, .18);
+}
+.vf-session { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #5A6B85; }
+.vf-session .ms { font-size: 18px; color: #9AA7BE; }
+.vf-avatar {
+  width: 38px; height: 38px; border-radius: 50%; background: #EAF0FB;
+  display: flex; align-items: center; justify-content: center;
+  color: #1A63E0; border: 1px solid #DCE6F7;
+}
+.vf-avatar .ms { font-size: 22px; font-variation-settings: 'FILL' 1; }
+
+/* Hero banner */
+.vf-hero {
+  position: relative; overflow: hidden; border-radius: 24px; padding: 30px; color: #fff;
+  background:
+    radial-gradient(130% 170% at 90% -10%, rgba(25, 182, 201, .4), transparent 50%),
+    linear-gradient(125deg, #0A1B45 0%, #123A8C 52%, #1A63E0 100%);
+  box-shadow: 0 22px 48px -22px rgba(10, 27, 69, .65);
+  display: flex; flex-wrap: wrap; gap: 26px; align-items: center; justify-content: space-between;
+}
+.vf-hero-eyebrow {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .18em;
+  color: rgba(255, 255, 255, .7); margin-bottom: 11px;
+}
+.vf-hero h1 {
+  margin: 0; font-size: clamp(24px, 3.4vw, 36px); font-weight: 800;
+  letter-spacing: -.02em; line-height: 1.1;
+}
+.vf-hero p {
+  margin: 12px 0 18px; font-size: 15px; line-height: 1.6;
+  color: rgba(255, 255, 255, .82); max-width: 52ch;
+}
+.vf-hero-l { flex: 1 1 360px; min-width: 0; }
+.vf-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.vf-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .22);
+  padding: 6px 13px; border-radius: 999px; font-size: 13px; font-weight: 500;
+}
+.vf-badge i { width: 5px; height: 5px; border-radius: 50%; background: #5FD0E0; }
+.vf-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.vf-stat {
+  background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 16px; padding: 14px 18px; min-width: 120px;
+}
+.vf-stat small {
+  display: flex; align-items: center; gap: 7px; font-size: 12px;
+  color: rgba(255, 255, 255, .72); font-weight: 600;
+}
+.vf-stat small .ms { font-size: 16px; color: #5FD0E0; }
+.vf-stat b {
+  display: block; font-size: 22px; font-weight: 800; margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tabs as pills */
+.vf-tabs .tab-nav {
+  border: none !important; display: inline-flex; padding: 4px; background: #E6ECF5;
+  border-radius: 13px; gap: 4px; width: max-content;
+}
+.vf-tabs .tab-nav button {
+  border: none !important; border-radius: 9px !important; padding: 9px 18px !important;
+  font-size: 14px !important; font-weight: 600; color: #5A6B85; background: transparent !important;
+}
+.vf-tabs .tab-nav button.selected,
+.vf-tabs .tab-nav button[aria-selected="true"] {
+  background: #fff !important; color: #0B2B6B !important; font-weight: 700;
+  box-shadow: 0 2px 6px rgba(11, 43, 107, .16);
+}
+
+/* Info banner */
+.vf-info {
+  display: flex; gap: 10px; align-items: flex-start; background: #EAF1FC;
+  border: 1px solid #D5E2F7; border-radius: 14px; padding: 13px 16px;
+}
+.vf-info .ms { font-size: 20px; color: #1A63E0; flex: 0 0 auto; margin-top: 1px; }
+.vf-info p { margin: 0; font-size: 14px; line-height: 1.55; color: #37455E; }
+.vf-info b { color: #0B2B6B; }
+
+/* Cards */
+.vf-card {
+  background: #fff !important; border: 1px solid #E4E9F2 !important; border-radius: 20px !important;
+  box-shadow: 0 1px 2px rgba(16, 33, 77, .04), 0 14px 36px -22px rgba(16, 33, 77, .28) !important;
+  padding: 16px 18px !important;
+}
+.vf-card-head { display: flex; align-items: center; gap: 11px; padding: 2px 0 10px; }
+.vf-card-head .ico {
+  width: 34px; height: 34px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+}
+.vf-card-head .ico .ms { font-size: 20px; font-variation-settings: 'FILL' 1; }
+.vf-card-head .ico.blue { background: #E8F0FF; color: #1A63E0; }
+.vf-card-head .ico.teal { background: #E1F6F9; color: #0E96A8; }
+.vf-card-head b { font-size: 15px; font-weight: 700; }
+.vf-status {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+}
+.vf-status i { width: 7px; height: 7px; border-radius: 50%; }
+.vf-status.listen { background: #FFF0F2; color: #E0344B; }
+.vf-status.listen i { background: #E0344B; }
+.vf-status.reply { background: #E9F8F1; color: #1FA971; }
+.vf-status.reply i { background: #1FA971; }
+.vf-status.ready { background: #EEF2F8; color: #5A6B85; }
+.vf-status.ready i { background: #9AA7BE; }
+
+/* Section mini-label */
+.vf-label {
+  margin: 6px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: #7C8AA5; display: flex; align-items: center; gap: 6px;
+}
+.vf-label .ms { font-size: 15px; }
+
+/* Latency metric cards */
+.vf-metrics {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px; margin-bottom: 6px;
+}
+.vf-metric { background: #F7F9FC; border: 1px solid #EAEFF6; border-radius: 13px; padding: 13px 15px; }
+.vf-metric.total { background: #ECF8F2; border-color: #CFEEDD; }
+.vf-metric .k { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #8493AE; }
+.vf-metric.total .k { color: #1FA971; }
+.vf-metric .v {
+  font-size: 20px; font-weight: 800; margin-top: 4px;
+  font-variant-numeric: tabular-nums; color: #0F1B2D;
+}
+.vf-metric .v span { font-size: 13px; font-weight: 600; color: #9AA7BE; }
+.vf-metric.total .v span { color: #1FA971; }
+.vf-bar { height: 5px; border-radius: 3px; background: #E6ECF5; margin-top: 8px; overflow: hidden; }
+.vf-metric.total .vf-bar { background: #D2EEDF; }
+.vf-bar > i {
+  display: block; height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, #1A63E0, #19B6C9);
+}
+.vf-metric.total .vf-bar > i { background: linear-gradient(90deg, #1FA971, #19B6C9); }
+
+/* Primary action button gradient */
+.vf-send button {
+  background: linear-gradient(135deg, #1A63E0, #1452C0) !important;
+  color: #fff !important; font-weight: 700 !important; border: none !important;
+}
+
+@media (max-width: 680px) {
+  .gradio-container { padding: 6px !important; }
+  .vf-hero { padding: 18px 16px; border-radius: 16px; }
+  button { min-height: 46px !important; }
+}

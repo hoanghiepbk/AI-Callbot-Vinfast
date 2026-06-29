@@ -3,39 +3,106 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from callbot.audio.playback import decode_wav_bytes
 from callbot.pipeline import CallbotPipeline
 from callbot.voice_call import VoiceCallSession
 
-# Polished, mobile-first styling: a centered container, a branded header banner, card-style
-# panels, touch-friendly controls, and column stacking on narrow screens. Passed to launch()
-# (Gradio 6 takes both `css` and `theme` there, not on Blocks).
-_CSS = """
-.gradio-container { max-width: 1060px !important; margin: 0 auto !important; }
-footer { display: none !important; }
-#vf-header {
-  background: linear-gradient(135deg, #07203a 0%, #1769aa 100%);
-  color: #ffffff; padding: 26px 28px; border-radius: 16px;
-  box-shadow: 0 6px 22px rgba(8, 40, 75, .18);
-}
-#vf-header h1 { margin: 0; font-size: 1.55rem; font-weight: 750; letter-spacing: .2px; }
-#vf-header p { margin: 7px 0 0; opacity: .92; font-size: .98rem; }
-#vf-header .vf-badges {
-  display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px;
-  background: rgba(255, 255, 255, .14); font-size: .8rem; letter-spacing: .3px;
-}
-.vf-card { border-radius: 14px !important; box-shadow: 0 2px 12px rgba(16, 42, 67, .06); }
-.vf-panel-title { font-weight: 650 !important; font-size: 1.05rem !important; }
-.vf-hint { color: var(--body-text-color-subdued); font-size: .9rem; }
-@media (max-width: 680px) {
-  .gradio-container { padding: 6px !important; }
-  #vf-header { padding: 18px 16px; border-radius: 12px; }
-  #vf-header h1 { font-size: 1.22rem; }
-  button { min-height: 46px !important; font-size: 1rem !important; }
-}
-"""
+
+def _load_css() -> str:
+    """Design chrome adapted from the Claude Design mockup (kept in demo.css so it is not
+    line-length-linted as Python). Missing file -> unstyled but functional demo."""
+    try:
+        return (Path(__file__).resolve().parent / "demo.css").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+_CSS = _load_css()
+
+_HEADER_HTML = (
+    "<div class='vf-header'>"
+    "<div class='vf-logo'>VF</div>"
+    "<div class='vf-brand'><small>VINFAST</small><b>Tổng đài viên ảo</b></div>"
+    "<div class='vf-h-spacer'></div>"
+    "<div class='vf-online'><i></i>Trực tuyến</div>"
+    "<div class='vf-session'><span class='ms'>tag</span>Phiên trực tiếp</div>"
+    "<div class='vf-avatar'><span class='ms'>support_agent</span></div>"
+    "</div>"
+)
+
+_HERO_HTML = (
+    "<div class='vf-hero'>"
+    "<div class='vf-hero-l'>"
+    "<span class='vf-hero-eyebrow'>TRỢ LÝ CHĂM SÓC KHÁCH HÀNG · TIẾNG VIỆT</span>"
+    "<h1>Tổng đài viên ảo</h1>"
+    "<p>Nghe, hiểu và trả lời khách hàng bằng giọng nói tự nhiên — hỗ trợ tra cứu đơn hàng, "
+    "bảo hành và cứu hộ theo thời gian thực.</p>"
+    "<div class='vf-badges'>"
+    "<span class='vf-badge'><i></i>Cứu hộ</span>"
+    "<span class='vf-badge'><i></i>Bảo hành</span>"
+    "<span class='vf-badge'><i></i>Đơn hàng</span>"
+    "<span class='vf-badge'><i></i>Xe máy</span>"
+    "<span class='vf-badge'><i></i>Hỗ trợ kỹ thuật</span>"
+    "</div></div>"
+    "<div class='vf-stats'>"
+    "<div class='vf-stat'><small><span class='ms'>verified</span>Xử lý</small>"
+    "<b>100% local</b></div>"
+    "<div class='vf-stat'><small><span class='ms'>bolt</span>Độ trễ</small><b>~0,9s</b></div>"
+    "<div class='vf-stat'><small><span class='ms'>graphic_eq</span>Giọng</small>"
+    "<b>Tiếng Việt</b></div>"
+    "</div></div>"
+)
+
+_CALL_INFO = (
+    "<div class='vf-info'><span class='ms'>info</span><p>Bấm <b>ghi âm</b> để bắt đầu — bot chào "
+    "trước, rồi cứ nói tự nhiên; bot tự nhận biết khi bạn ngừng và trả lời bằng giọng. "
+    "Bấm <b>dừng</b> để kết thúc. Nên đeo tai nghe để tránh vọng tiếng.</p></div>"
+)
+
+_INTERCOM_INFO = (
+    "<div class='vf-info'><span class='ms'>info</span><p>Nói vào micro hoặc gõ câu của khách, "
+    "rồi bấm <b>Gửi lượt</b>.</p></div>"
+)
+
+
+def _card_head(ico_cls: str, icon: str, title: str, status_cls: str, status_text: str) -> str:
+    return (
+        f"<div class='vf-card-head'><span class='ico {ico_cls}'>"
+        f"<span class='ms'>{icon}</span></span><b>{title}</b>"
+        f"<span class='vf-status {status_cls}'><i></i>{status_text}</span></div>"
+    )
+
+
+def _label(icon: str, text: str) -> str:
+    return f"<p class='vf-label'><span class='ms'>{icon}</span>{text}</p>"
+
+
+def _latency_html(asr_ms: float, nlu_ms: float, tts_ms: float, total_ms: float) -> str:
+    total = max(float(total_ms), 1.0)
+
+    def sec(ms: float) -> str:
+        return f"{ms / 1000:.2f}".replace(".", ",")
+
+    def card(k: str, ms: float, is_total: bool = False) -> str:
+        width = 100 if is_total else min(100, round(100 * ms / total))
+        cls = "vf-metric total" if is_total else "vf-metric"
+        return (
+            f"<div class='{cls}'><div class='k'>{k}</div>"
+            f"<div class='v'>{sec(ms)}<span>s</span></div>"
+            f"<div class='vf-bar'><i style='width:{width}%'></i></div></div>"
+        )
+
+    return (
+        "<div class='vf-metrics'>"
+        + card("ASR · NHẬN DẠNG", asr_ms)
+        + card("NLU · HIỂU Ý", nlu_ms)
+        + card("TTS · TỔNG HỢP", tts_ms)
+        + card("TỔNG ĐỘ TRỄ", total_ms, is_total=True)
+        + "</div>"
+    )
 
 
 @dataclass
@@ -76,20 +143,13 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
         transcript = "\n".join(result.state.get("transcript", []))
         final_json = result.final_output.model_dump(mode="json") if result.final_output else {}
         tts_audio = _audio_for_gradio(result.reply_audio, result.reply_audio_sample_rate)
-        return (
-            result.reply_text,
-            transcript,
-            result.state,
-            final_json,
-            tts_audio,
-            {
-                "asr_latency_ms": result.asr_latency_ms,
-                "llm_latency_ms": result.llm_latency_ms,
-                "tts_latency_ms": result.tts_latency_ms,
-                "engine_latency_ms": result.engine_latency_ms,
-                "total_latency_ms": result.total_latency_ms,
-            },
+        latency = _latency_html(
+            result.asr_latency_ms,
+            result.engine_latency_ms,
+            result.tts_latency_ms,
+            result.total_latency_ms,
         )
+        return result.reply_text, transcript, result.state, final_json, tts_audio, latency
 
     def _finalize():
         final = pipeline.finalize()
@@ -99,7 +159,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
         # New call: wipe the shared conversation state so the next caller starts clean
         # (the demo holds one pipeline; without this, slots/transcript bleed across calls).
         pipeline.reset()
-        return None, "", "", "", {}, {}, None, {}
+        return None, "", "", "", {}, {}, None, ""
 
     # Hands-free voice-call ('Gọi điện') mode: one session wraps the same pipeline (single-user
     # demo), half-duplex turn-taking over a streamed mic.
@@ -134,39 +194,42 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
         )
 
     with gr.Blocks(title="VinFast Callbot") as demo:
-        gr.HTML(
-            "<h1>🚗 VinFast — Tổng đài viên ảo</h1>"
-            "<p>Trợ lý chăm sóc khách hàng tiếng Việt — nghe, hiểu và trả lời bằng giọng nói.</p>"
-            "<span class='vf-badges'>Cứu hộ · Bảo hành · Đơn hàng · Xe máy · "
-            "Hỗ trợ kỹ thuật</span>",
-            elem_id="vf-header",
-        )
+        gr.HTML(_HEADER_HTML)
+        gr.HTML(_HERO_HTML)
 
-        with gr.Tabs():
+        with gr.Tabs(elem_classes="vf-tabs"):
             with gr.Tab("📞 Gọi điện"):
-                gr.Markdown(
-                    "Bấm **ghi âm** để bắt đầu — bot chào trước, rồi cứ nói tự nhiên; bot tự nhận "
-                    "biết khi bạn ngừng và trả lời bằng giọng. Bấm **dừng** để kết thúc. "
-                    "_Nên đeo tai nghe để tránh vọng tiếng._",
-                    elem_classes="vf-hint",
-                )
+                gr.HTML(_CALL_INFO)
                 with gr.Row():
-                    with gr.Column(scale=1, min_width=300):
+                    with gr.Column(scale=1, min_width=320):
                         with gr.Group(elem_classes="vf-card"):
-                            gr.Markdown("🎙️ **Khách hàng**", elem_classes="vf-panel-title")
+                            gr.HTML(
+                                _card_head(
+                                    "blue", "headset_mic", "Khách hàng", "listen", "đang nghe"
+                                )
+                            )
+                            gr.HTML(_label("mic", "Nhấn để gọi và nói"))
                             call_mic = gr.Audio(
                                 sources=["microphone"],
                                 streaming=True,
                                 type="numpy",
-                                label="Nhấn để gọi và nói",
+                                show_label=False,
                             )
-                    with gr.Column(scale=1, min_width=300):
+                    with gr.Column(scale=1, min_width=320):
                         with gr.Group(elem_classes="vf-card"):
-                            gr.Markdown("🤖 **Tổng đài viên**", elem_classes="vf-panel-title")
-                            call_reply_audio = gr.Audio(label="Bot nói", autoplay=True)
-                            call_reply = gr.Textbox(label="Bot trả lời", lines=2)
-                            call_transcript = gr.Textbox(label="Lịch sử hội thoại", lines=6)
-                            call_state = gr.JSON(label="Trạng thái slot")
+                            gr.HTML(
+                                _card_head(
+                                    "teal", "smart_toy", "Tổng đài viên", "reply", "đang trả lời"
+                                )
+                            )
+                            gr.HTML(_label("graphic_eq", "Bot nói"))
+                            call_reply_audio = gr.Audio(show_label=False, autoplay=True)
+                            gr.HTML(_label("forum", "Bot trả lời"))
+                            call_reply = gr.Textbox(show_label=False, lines=2, container=False)
+                            gr.HTML(_label("history", "Lịch sử hội thoại"))
+                            call_transcript = gr.Textbox(show_label=False, lines=6, container=False)
+                            gr.HTML(_label("data_object", "Trạng thái slot"))
+                            call_state = gr.JSON(show_label=False)
 
                 call_outputs = [call_reply_audio, call_reply, call_transcript, call_state]
                 call_mic.start_recording(_voice_start, outputs=call_outputs)
@@ -179,40 +242,46 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                 )
 
             with gr.Tab("🎙️ Bộ đàm"):
-                gr.Markdown(
-                    "Nói vào micro hoặc gõ câu của khách, rồi bấm **Gửi lượt**.",
-                    elem_classes="vf-hint",
-                )
+                gr.HTML(_INTERCOM_INFO)
                 with gr.Row():
-                    with gr.Column(scale=1, min_width=300):
+                    with gr.Column(scale=1, min_width=320):
                         with gr.Group(elem_classes="vf-card"):
-                            gr.Markdown("🎙️ **Khách hàng**", elem_classes="vf-panel-title")
-                            audio = gr.Audio(
-                                sources=["microphone"], type="numpy", label="Nói vào micro"
+                            gr.HTML(
+                                _card_head("blue", "headset_mic", "Khách hàng", "ready", "Sẵn sàng")
                             )
+                            gr.HTML(_label("mic", "Nói vào micro"))
+                            audio = gr.Audio(sources=["microphone"], type="numpy", show_label=False)
+                            gr.HTML(_label("keyboard", "Hoặc gõ câu của khách"))
                             text = gr.Textbox(
-                                label="Hoặc gõ câu của khách",
+                                show_label=False,
+                                container=False,
                                 placeholder="VD: em hỏi tình trạng đơn đặt cọc xe của em…",
                             )
+                            submit = gr.Button(
+                                "Gửi lượt", variant="primary", elem_classes="vf-send"
+                            )
                             with gr.Row():
-                                submit = gr.Button("Gửi lượt", variant="primary", scale=2)
-                                finalize_btn = gr.Button("Kết thúc", variant="secondary", scale=1)
-                                reset_btn = gr.Button(
-                                    "🔄 Cuộc gọi mới", variant="secondary", scale=1
-                                )
-
-                    with gr.Column(scale=1, min_width=300):
+                                finalize_btn = gr.Button("Kết thúc", variant="secondary")
+                                reset_btn = gr.Button("🔄 Cuộc gọi mới", variant="secondary")
+                    with gr.Column(scale=1, min_width=320):
                         with gr.Group(elem_classes="vf-card"):
-                            gr.Markdown("🤖 **Tổng đài viên**", elem_classes="vf-panel-title")
-                            reply = gr.Textbox(label="Bot trả lời", lines=3)
-                            tts_audio = gr.Audio(label="Bot nói (nghe)", autoplay=True)
-                            transcript = gr.Textbox(label="Lịch sử hội thoại", lines=6)
+                            gr.HTML(
+                                _card_head(
+                                    "teal", "smart_toy", "Tổng đài viên", "reply", "Đã trả lời"
+                                )
+                            )
+                            gr.HTML(_label("forum", "Bot trả lời"))
+                            reply = gr.Textbox(show_label=False, lines=3, container=False)
+                            gr.HTML(_label("graphic_eq", "Bot nói (nghe)"))
+                            tts_audio = gr.Audio(show_label=False, autoplay=True)
+                            gr.HTML(_label("history", "Lịch sử hội thoại"))
+                            transcript = gr.Textbox(show_label=False, lines=6, container=False)
 
                 with gr.Accordion("🔎 Chi tiết kỹ thuật (slot · JSON cuối · độ trễ)", open=False):
+                    latency = gr.HTML()
                     with gr.Row():
-                        state = gr.JSON(label="Trạng thái slot (live)")
+                        state = gr.JSON(label="Trạng thái slot")
                         final = gr.JSON(label="JSON cuối cuộc gọi")
-                        latency = gr.JSON(label="Độ trễ theo tầng (ms)")
 
                 submit.click(
                     _turn,
@@ -232,7 +301,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
             "theme": gr.themes.Soft(
                 primary_hue="blue",
                 neutral_hue="slate",
-                font=["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+                font=["Be Vietnam Pro", "system-ui", "sans-serif"],
             ),
             "css": _CSS,
         },
