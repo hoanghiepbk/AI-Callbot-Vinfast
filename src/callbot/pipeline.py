@@ -20,6 +20,7 @@ from callbot.models.schemas import FinalOutput
 from callbot.normalization.base import Normalizer
 from callbot.normalization.vietnamese_numbers import VietnameseNormalizer
 from callbot.tts import TTS, create_tts
+from callbot.utils.latency import format_latency
 
 logger = logging.getLogger(__name__)
 _warned_no_soxr = False
@@ -267,7 +268,7 @@ class CallbotPipeline:
 
         final_output = self.engine.finalize() if turn_result.done else None
         total_latency_ms = (time.perf_counter() - started) * 1000.0
-        return PipelineTurnResult(
+        result = PipelineTurnResult(
             user_text=user_text or "",
             reply_text=turn_result.reply,
             done=turn_result.done,
@@ -282,6 +283,9 @@ class CallbotPipeline:
             total_latency_ms=total_latency_ms,
             filler_text=filler_text,
         )
+        # Per-turn latency breakdown (silent until setup_logging configures a handler).
+        logger.info("turn done=%s | %s", result.done, format_latency(result))
+        return result
 
     def _wants_filler(self, audio: Any | None, effective_play_audio: bool) -> bool:
         """Filler only for voice turns (audio input → real ASR+LLM wait), when enabled and we
