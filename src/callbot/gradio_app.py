@@ -9,6 +9,34 @@ from callbot.audio.playback import decode_wav_bytes
 from callbot.pipeline import CallbotPipeline
 from callbot.voice_call import VoiceCallSession
 
+# Polished, mobile-first styling: a centered container, a branded header banner, card-style
+# panels, touch-friendly controls, and column stacking on narrow screens. Passed to launch()
+# (Gradio 6 takes both `css` and `theme` there, not on Blocks).
+_CSS = """
+.gradio-container { max-width: 1060px !important; margin: 0 auto !important; }
+footer { display: none !important; }
+#vf-header {
+  background: linear-gradient(135deg, #07203a 0%, #1769aa 100%);
+  color: #ffffff; padding: 26px 28px; border-radius: 16px;
+  box-shadow: 0 6px 22px rgba(8, 40, 75, .18);
+}
+#vf-header h1 { margin: 0; font-size: 1.55rem; font-weight: 750; letter-spacing: .2px; }
+#vf-header p { margin: 7px 0 0; opacity: .92; font-size: .98rem; }
+#vf-header .vf-badges {
+  display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px;
+  background: rgba(255, 255, 255, .14); font-size: .8rem; letter-spacing: .3px;
+}
+.vf-card { border-radius: 14px !important; box-shadow: 0 2px 12px rgba(16, 42, 67, .06); }
+.vf-panel-title { font-weight: 650 !important; font-size: 1.05rem !important; }
+.vf-hint { color: var(--body-text-color-subdued); font-size: .9rem; }
+@media (max-width: 680px) {
+  .gradio-container { padding: 6px !important; }
+  #vf-header { padding: 18px 16px; border-radius: 12px; }
+  #vf-header h1 { font-size: 1.22rem; }
+  button { min-height: 46px !important; font-size: 1rem !important; }
+}
+"""
+
 
 @dataclass
 class GradioDemo:
@@ -106,32 +134,39 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
         )
 
     with gr.Blocks(title="VinFast Callbot") as demo:
-        gr.Markdown(
-            "# 🚗 VinFast — Tổng đài viên ảo\n"
-            "Trợ lý chăm sóc khách hàng tiếng Việt: **nghe → hiểu → trả lời bằng giọng nói** "
-            "(cứu hộ · bảo hành · đơn hàng · xe máy · hỗ trợ kỹ thuật)."
+        gr.HTML(
+            "<h1>🚗 VinFast — Tổng đài viên ảo</h1>"
+            "<p>Trợ lý chăm sóc khách hàng tiếng Việt — nghe, hiểu và trả lời bằng giọng nói.</p>"
+            "<span class='vf-badges'>Cứu hộ · Bảo hành · Đơn hàng · Xe máy · "
+            "Hỗ trợ kỹ thuật</span>",
+            elem_id="vf-header",
         )
 
         with gr.Tabs():
-            with gr.Tab("📞 Gọi điện (rảnh tay)"):
+            with gr.Tab("📞 Gọi điện"):
                 gr.Markdown(
-                    "Bấm **ghi âm** để bắt đầu cuộc gọi — bot chào trước, rồi cứ nói tự nhiên, "
-                    "bot tự nhận biết khi bạn ngừng và trả lời bằng giọng. Bấm **dừng** để kết "
-                    "thúc. _Nên đeo tai nghe để tránh vọng tiếng._"
+                    "Bấm **ghi âm** để bắt đầu — bot chào trước, rồi cứ nói tự nhiên; bot tự nhận "
+                    "biết khi bạn ngừng và trả lời bằng giọng. Bấm **dừng** để kết thúc. "
+                    "_Nên đeo tai nghe để tránh vọng tiếng._",
+                    elem_classes="vf-hint",
                 )
                 with gr.Row():
-                    with gr.Column(scale=1):
-                        call_mic = gr.Audio(
-                            sources=["microphone"],
-                            streaming=True,
-                            type="numpy",
-                            label="🎙️ Nói chuyện (rảnh tay)",
-                        )
-                    with gr.Column(scale=1):
-                        call_reply_audio = gr.Audio(label="🤖 Bot nói", autoplay=True)
-                        call_reply = gr.Textbox(label="Bot trả lời", lines=2)
-                        call_transcript = gr.Textbox(label="Lịch sử hội thoại", lines=6)
-                        call_state = gr.JSON(label="Trạng thái slot (live)")
+                    with gr.Column(scale=1, min_width=300):
+                        with gr.Group(elem_classes="vf-card"):
+                            gr.Markdown("🎙️ **Khách hàng**", elem_classes="vf-panel-title")
+                            call_mic = gr.Audio(
+                                sources=["microphone"],
+                                streaming=True,
+                                type="numpy",
+                                label="Nhấn để gọi và nói",
+                            )
+                    with gr.Column(scale=1, min_width=300):
+                        with gr.Group(elem_classes="vf-card"):
+                            gr.Markdown("🤖 **Tổng đài viên**", elem_classes="vf-panel-title")
+                            call_reply_audio = gr.Audio(label="Bot nói", autoplay=True)
+                            call_reply = gr.Textbox(label="Bot trả lời", lines=2)
+                            call_transcript = gr.Textbox(label="Lịch sử hội thoại", lines=6)
+                            call_state = gr.JSON(label="Trạng thái slot")
 
                 call_outputs = [call_reply_audio, call_reply, call_transcript, call_state]
                 call_mic.start_recording(_voice_start, outputs=call_outputs)
@@ -143,28 +178,35 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                     time_limit=600,
                 )
 
-            with gr.Tab("🎙️ Bộ đàm (từng lượt)"):
-                gr.Markdown("Nói vào micro hoặc gõ câu của khách, rồi bấm **Gửi lượt**.")
+            with gr.Tab("🎙️ Bộ đàm"):
+                gr.Markdown(
+                    "Nói vào micro hoặc gõ câu của khách, rồi bấm **Gửi lượt**.",
+                    elem_classes="vf-hint",
+                )
                 with gr.Row():
-                    with gr.Column(scale=1):
-                        gr.Markdown("### 🎙️ Khách hàng")
-                        audio = gr.Audio(
-                            sources=["microphone"], type="numpy", label="Nói vào micro"
-                        )
-                        text = gr.Textbox(
-                            label="Hoặc gõ câu của khách",
-                            placeholder="VD: em hỏi tình trạng đơn đặt cọc xe của em…",
-                        )
-                        with gr.Row():
-                            submit = gr.Button("Gửi lượt", variant="primary")
-                            finalize_btn = gr.Button("Kết thúc cuộc gọi", variant="secondary")
-                            reset_btn = gr.Button("🔄 Cuộc gọi mới", variant="secondary")
+                    with gr.Column(scale=1, min_width=300):
+                        with gr.Group(elem_classes="vf-card"):
+                            gr.Markdown("🎙️ **Khách hàng**", elem_classes="vf-panel-title")
+                            audio = gr.Audio(
+                                sources=["microphone"], type="numpy", label="Nói vào micro"
+                            )
+                            text = gr.Textbox(
+                                label="Hoặc gõ câu của khách",
+                                placeholder="VD: em hỏi tình trạng đơn đặt cọc xe của em…",
+                            )
+                            with gr.Row():
+                                submit = gr.Button("Gửi lượt", variant="primary", scale=2)
+                                finalize_btn = gr.Button("Kết thúc", variant="secondary", scale=1)
+                                reset_btn = gr.Button(
+                                    "🔄 Cuộc gọi mới", variant="secondary", scale=1
+                                )
 
-                    with gr.Column(scale=1):
-                        gr.Markdown("### 🤖 Tổng đài viên")
-                        reply = gr.Textbox(label="Bot trả lời", lines=3)
-                        tts_audio = gr.Audio(label="Bot nói (nghe)", autoplay=True)
-                        transcript = gr.Textbox(label="Lịch sử hội thoại", lines=6)
+                    with gr.Column(scale=1, min_width=300):
+                        with gr.Group(elem_classes="vf-card"):
+                            gr.Markdown("🤖 **Tổng đài viên**", elem_classes="vf-panel-title")
+                            reply = gr.Textbox(label="Bot trả lời", lines=3)
+                            tts_audio = gr.Audio(label="Bot nói (nghe)", autoplay=True)
+                            transcript = gr.Textbox(label="Lịch sử hội thoại", lines=6)
 
                 with gr.Accordion("🔎 Chi tiết kỹ thuật (slot · JSON cuối · độ trễ)", open=False):
                     with gr.Row():
@@ -186,5 +228,12 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
     return GradioDemo(
         blocks=demo,
         available=True,
-        launch_kwargs={"theme": gr.themes.Soft(primary_hue="blue")},
+        launch_kwargs={
+            "theme": gr.themes.Soft(
+                primary_hue="blue",
+                neutral_hue="slate",
+                font=["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+            ),
+            "css": _CSS,
+        },
     )
