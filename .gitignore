@@ -1,4 +1,5 @@
 .venv/
+.venv-*/
 __pycache__/
 *.pyc
 .env
@@ -21,6 +22,8 @@ audio/*.reference.txt
 build/
 dist/
 eval/results.json
+# Gradio flagging / cache dir created at demo runtime.
+.gradio/
 
 # Claude config — local, không commit
 CLAUDE.md
