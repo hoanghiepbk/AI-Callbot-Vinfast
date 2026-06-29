@@ -76,11 +76,15 @@ class FasterWhisperASR:
         device: str | None = None,
         compute_type: str | None = None,
         language: str = "vi",
+        beam_size: int | None = None,
     ) -> None:
         self.model_name = _resolve_model(model_name)
         self.device = device or os.getenv("ASR_DEVICE", "cpu")
         self.compute_type = compute_type or os.getenv("ASR_COMPUTE_TYPE", "int8")
         self.language = language
+        # beam_size=1 (greedy) is much faster on CPU for live voice; default 5 keeps the
+        # higher-accuracy search for offline WER eval. ASR_BEAM_SIZE overrides per machine.
+        self.beam_size = beam_size or int(os.getenv("ASR_BEAM_SIZE", "5"))
         self._model: Any | None = None
 
     @property
@@ -118,6 +122,7 @@ class FasterWhisperASR:
         segments, info = self.model.transcribe(
             samples,
             language=self.language,
+            beam_size=self.beam_size,
             vad_filter=True,
             condition_on_previous_text=False,
         )
@@ -130,7 +135,9 @@ class FasterWhisperASR:
     def from_file(cls, path: str) -> ASRResult:
         started = time.perf_counter()
         instance = cls()
-        segments, info = instance.model.transcribe(str(Path(path)), language=instance.language)
+        segments, info = instance.model.transcribe(
+            str(Path(path)), language=instance.language, beam_size=instance.beam_size
+        )
         text = " ".join(segment.text.strip() for segment in segments).strip()
         latency_ms = (time.perf_counter() - started) * 1000
         confidence = getattr(info, "language_probability", None)
