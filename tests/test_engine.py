@@ -327,9 +327,22 @@ def test_is_denial_keyword_detection():
 
     assert _is_denial("không đúng") is True
     assert _is_denial("sai rồi") is True
+    assert _is_denial("sai") is True  # bare denial word
     assert _is_denial("không") is True  # bare standalone denial
     assert _is_denial("đúng rồi") is False
     assert _is_denial("không sao, đúng rồi ạ") is False  # embedded 'không' != denial
+    assert _is_denial("saigon") is False  # 'sai' inside a longer token is not a denial
+
+
+def test_is_greeting_is_anchored():
+    from callbot.dialogue.graph import _is_greeting
+
+    assert _is_greeting("chào em") is True
+    assert _is_greeting("alo") is True
+    assert _is_greeting("xin chào ạ") is True
+    # A request that merely contains 'chào' mid-sentence must NOT be treated as a greeting.
+    assert _is_greeting("tôi muốn chào hỏi về đơn hàng") is False
+    assert _is_greeting("ừm") is False
 
 
 # --- R5: finalize() memoizes the post-call LLM call ---
