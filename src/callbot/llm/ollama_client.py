@@ -64,9 +64,19 @@ _KEEP_ALIVE = _resolve_keep_alive()
 class OllamaClient:
     """LLM Protocol implementation backed by an Ollama server."""
 
-    def __init__(self, host: str | None = None, model: str | None = None) -> None:
+    def __init__(
+        self,
+        host: str | None = None,
+        model: str | None = None,
+        timeout: float | None = None,
+    ) -> None:
         self._model = model or config.LLM_MODEL
-        self._client = ollama.Client(host=host or config.OLLAMA_HOST)
+        # timeout is forwarded to httpx so a hung/unreachable server fails fast (-> empty
+        # answer, retried/handled by the hybrid safety net) instead of blocking forever.
+        self._client = ollama.Client(
+            host=host or config.OLLAMA_HOST,
+            timeout=config.OLLAMA_TIMEOUT if timeout is None else timeout,
+        )
 
     def complete(self, system: str, user: str, json_schema: dict | None = None) -> LLMResult:
         messages = [
