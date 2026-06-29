@@ -334,3 +334,10 @@ see [scenarios/audio/README.md](scenarios/audio/README.md).
 Dialogue core, exception handling, evaluation suite (eval + ablation + WER) implemented and
 green on the lean CI gate. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
 [docs/eval_report.md](docs/eval_report.md).
+
+---
+
+## Authors
+
+- **Phạm Hữu Hoàng Hiệp** — dialogue engine, LLM/NLU, evaluation framework
+- **Nguyễn Mai Phương** — ASR, TTS, audio pipeline

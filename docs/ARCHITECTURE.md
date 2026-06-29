@@ -1,5 +1,7 @@
 # Architecture — VinFast Vietnamese Callbot
 
+**Authors:** Phạm Hữu Hoàng Hiệp (dialogue · LLM · evaluation) · Nguyễn Mai Phương (ASR · TTS · audio)
+
 A fully local Vietnamese customer-service voice bot: **ASR → LLM-NLU → deterministic
 dialogue engine → TTS**, with the dialogue brain built as a *thin LLM over a thick state
 machine*. Every claim below maps to a file in `src/callbot/`.

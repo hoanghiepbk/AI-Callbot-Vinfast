@@ -1,6 +1,8 @@
 <!-- DRAFT giọng: chờ Hiệp chốt -->
 # Evaluation Report — VinFast Vietnamese Callbot
 
+**Authors:** Phạm Hữu Hoàng Hiệp (dialogue · LLM · evaluation) · Nguyễn Mai Phương (ASR · TTS · audio)
+
 Eval-as-code: every number below is produced by a committed script over a frozen golden set,
 run through the **real** dialogue engine. Reproduce with `python -m eval.run_eval [--ollama]`,
 `python -m eval.ablation`, `python -m eval.run_wer`.
