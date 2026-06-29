@@ -85,9 +85,12 @@ def redirect(turn_index: int) -> str:
 
 
 def emergency_msg() -> str:
+    # Hotline written as one contiguous digit run so TTS (tts_preprocess expands runs of >=4
+    # digits) reads EVERY digit out loud — "một chín không không hai ba hai ba tám chín" — not
+    # "1900" as digits then "23 23 89" as numbers. A caller in an emergency must hear each digit.
     return (
         "Đây là tình huống khẩn cấp, anh/chị giữ an toàn và gọi ngay hotline cứu hộ "
-        "1900 23 23 89 ạ. Em ghi nhận nhanh thông tin để hỗ trợ."
+        "1900232389 ạ. Em ghi nhận nhanh thông tin để hỗ trợ."
     )
 
 
