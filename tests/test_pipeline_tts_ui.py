@@ -83,6 +83,18 @@ def test_pipeline_text_turn_and_finalize() -> None:
     assert final.post_call.emergency in {"yes", "no"}
 
 
+def test_pipeline_reset_clears_conversation_state() -> None:
+    # What the gradio "Cuộc gọi mới" button triggers: state must not bleed across calls.
+    pipeline = CallbotPipeline(engine=_engine(), asr=None, tts=None)
+
+    pipeline.turn(text="xin chao", play_audio=False)
+    pipeline.reset()
+    turn = pipeline.turn(text="cau hoi moi", play_audio=False)
+
+    # Fresh call: the turn counter restarts at 1 instead of continuing to 2.
+    assert turn.state["turn_index"] == 1
+
+
 def test_pipeline_audio_turn_uses_asr() -> None:
     pipeline = CallbotPipeline(engine=_engine(), asr=_StubASR(), tts=_StubTTS())
     audio = np.zeros(16000, dtype=np.float32)
