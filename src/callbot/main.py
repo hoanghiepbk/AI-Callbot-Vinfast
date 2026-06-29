@@ -25,7 +25,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--listen-seconds",
         type=float,
         default=20.0,
-        help="Voice mode: max seconds for one utterance before force-cutting (VAD ends turns earlier on a pause)",
+        help=(
+            "Voice mode: max seconds for one utterance before force-cutting "
+            "(VAD ends turns earlier on a pause)"
+        ),
     )
     parser.add_argument(
         "--share",

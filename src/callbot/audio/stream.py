@@ -125,7 +125,10 @@ class StreamingMicrophone:
                         silent_frames = 0
                     else:
                         silent_frames += 1
-                        if speech_frames >= min_speech_frames and silent_frames >= max_silent_frames:
+                        if (
+                            speech_frames >= min_speech_frames
+                            and silent_frames >= max_silent_frames
+                        ):
                             return np.concatenate(collected)
 
                 elapsed = time.perf_counter() - wall_start

@@ -65,7 +65,10 @@ def main() -> int:
     if peak < 1e-4:
         print("SILENT — mic delivered no signal. Wrong device, muted, or no OS mic permission.")
     elif max_rms < _VAD_THRESHOLD:
-        print("TOO QUIET — signal present but below the VAD threshold. Lower threshold or raise mic gain.")
+        print(
+            "TOO QUIET — signal present but below the VAD threshold. "
+            "Lower threshold or raise mic gain."
+        )
     else:
         print("OK — speech clears the threshold. The VAD should detect your voice.")
     return 0
