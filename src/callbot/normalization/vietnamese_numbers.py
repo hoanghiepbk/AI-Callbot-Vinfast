@@ -152,27 +152,65 @@ def _digits(text: str) -> str:
     return "".join(str(value) for value in values)
 
 
+# Large-scale multipliers for cardinal numbers. "trăm" (×100) is handled inline because it
+# composes WITHIN a scale group ("một trăm hai mươi nghìn" = (1*100 + 20) * 1000 = 120,000).
+_SCALE_WORDS = {
+    "nghin": 1000,
+    "ngan": 1000,
+    "van": 10000,  # regional: "vạn" = 10,000
+    "trieu": 1_000_000,
+    "ty": 1_000_000_000,
+}
+
+
+def _words_to_int(tokens: list[str]) -> int | None:
+    """Compose a Vietnamese cardinal (spoken or digit) into an int — odo only.
+
+    Accumulates units/tens/hundreds into ``current``, folds them into ``section`` at each large
+    scale word (nghìn/triệu/…), and sums the scaled sections. Handles "một trăm nghìn" = 100,000,
+    "một trăm hai mươi nghìn" = 120,000, "năm mươi lăm nghìn" = 55,000 and bare digits like
+    "50000" or "120 nghìn". Returns None when no number word/digit is present. (Limitation: the
+    rare formal "không trăm" zero-hundreds reading is not modelled — irrelevant for odo speech.)
+    """
+    total = 0  # sum of completed large-scale groups
+    section = 0  # value below the active scale, including hundreds
+    current = 0  # the running < 100 sub-value being built
+    saw = False
+    skip_muoi = False  # a tens digit already consumed the following "muoi"
+    for idx, token in enumerate(tokens):
+        nxt = tokens[idx + 1] if idx + 1 < len(tokens) else None
+        if token.isdigit():
+            current += int(token)
+            saw = True
+        elif token in _DIGIT_WORDS:
+            digit = int(_DIGIT_WORDS[token])
+            if nxt == "muoi":  # "ba mươi" -> 30; the "muoi" token is consumed next loop
+                current += digit * 10
+                skip_muoi = True
+            else:
+                current += digit
+            saw = True
+        elif token == "muoi":
+            if skip_muoi:
+                skip_muoi = False
+            else:
+                current += 10  # standalone "mười" = 10
+                saw = True
+        elif token == "tram":
+            current = (current or 1) * 100  # "một trăm"/"trăm" = 100
+            saw = True
+        elif token in _SCALE_WORDS:
+            section += current
+            current = 0
+            total += (section or 1) * _SCALE_WORDS[token]  # "nghìn" alone -> 1,000
+            section = 0
+            saw = True
+        # "linh"/"le" connectors and any noise token -> skip
+    return total + section + current if saw else None
+
+
 def _parse_integer_phrase(text: str) -> int | None:
-    tokens = _tokens(text)
-    multiplier = 1
-    if "van" in tokens:  # "vạn" = 10,000 ("mười nghìn" is handled via the "nghin" path below)
-        multiplier = 10000
-    elif any(token in {"nghin", "ngan"} for token in tokens):
-        multiplier = 1000
-    elif any(token in {"tram"} for token in tokens):
-        multiplier = 100
-
-    direct = re.search(r"\d+", _ascii(text))
-    if direct:
-        return int(direct.group()) * multiplier
-
-    digits = _parse_number_words(tokens)
-    if not digits:
-        return None
-    base = (
-        sum(digits) if multiplier >= 1000 and len(digits) <= 3 else int("".join(map(str, digits)))
-    )
-    return base * multiplier
+    return _words_to_int(_tokens(text))
 
 
 def _normalize_phone(raw: str) -> str:
@@ -252,7 +290,11 @@ class VietnameseNormalizer:
             value = re.sub(r"\s+", " ", text)
 
         if value is None:
-            return NormResult(value=None, parse_failed=field in _STRICT_FIELDS)
+            # odo that parses to nothing (no number heard) is a garbled turn (#5), not a silent
+            # null — re-ask instead of confirming an empty odo. Strict fields fail the same way.
+            return NormResult(
+                value=None, parse_failed=field in _STRICT_FIELDS or field == "current_odo"
+            )
 
         parse_failed = not validate_field(field, value)
         if field not in _STRICT_FIELDS and field != "current_odo":

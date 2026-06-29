@@ -70,6 +70,28 @@ def test_odo_digits_passthrough() -> None:
     assert value("current_odo", "34567 km") == "34567"
 
 
+def test_odo_hundred_thousand_composes() -> None:
+    # Regression: "một trăm nghìn" used to drop "trăm" and yield 1,000 (100x too small).
+    assert value("current_odo", "một trăm nghìn") == "100000"
+    assert value("current_odo", "hai trăm nghìn") == "200000"
+
+
+def test_odo_hundred_plus_tens_thousand_composes() -> None:
+    assert value("current_odo", "một trăm hai mươi nghìn") == "120000"
+    assert value("current_odo", "năm mươi lăm nghìn") == "55000"
+
+
+def test_odo_million_composes() -> None:
+    assert value("current_odo", "một triệu") == "1000000"
+
+
+def test_odo_with_no_number_parse_fails() -> None:
+    # No number heard -> garbled (#5) re-ask, never a silently-confirmed empty odo.
+    result = normalize_field("current_odo", "anh chưa xem")
+    assert result.value is None
+    assert result.parse_failed is True
+
+
 def test_free_text_preserved_for_name() -> None:
     assert value("full_name", "Nguyen Van Nam") == "Nguyen Van Nam"
 
