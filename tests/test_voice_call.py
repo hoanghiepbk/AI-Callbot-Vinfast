@@ -111,6 +111,18 @@ def test_mic_is_muted_while_bot_speaks() -> None:
     assert session.feed(_utterance(), _SR) is not None
 
 
+def test_caller_talking_immediately_is_still_heard() -> None:
+    # Regression: an earlier fixed calibration window mistook the caller's first words for the
+    # noise floor, then never detected speech. With no leading silence (caller talks the instant
+    # the mic opens), the utterance must still endpoint and run a turn.
+    session = VoiceCallSession(_pipeline())
+
+    result = session.feed(np.concatenate([_speech(5), _silence(30)]), _SR)
+
+    assert result is not None
+    assert result.user_text == "em hoi don hang"
+
+
 def test_long_utterance_without_a_pause_still_answers() -> None:
     # Constant speech with no trailing silence (or a noisy room the VAD can't endpoint): the
     # safety cap must still force a turn so the caller is never left waiting on a silent bot.

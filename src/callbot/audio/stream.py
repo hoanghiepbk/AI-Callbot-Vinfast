@@ -28,14 +28,16 @@ from callbot.models.schemas import READBACK_REQUIRED
 # not clipped when collection starts. ~150 ms covers a typical onset.
 _PREROLL_MS = 150
 
-# Adaptive endpointing (browser voice-call only). A browser mic with AGC has a noise floor that
-# can sit ABOVE the fixed 0.01 threshold, so every frame reads as speech and the turn never ends
-# -> the bot never answers. In adaptive mode we calibrate the ambient floor over the first
-# _CALIB_MS after the endpointer is armed, then require speech to clear it by _NOISE_SPEECH_FACTOR
-# (clamped so a loud room can't lift the bar above real speech).
-_CALIB_MS = 150
-_NOISE_SPEECH_FACTOR = 2.5
-_NOISE_RMS_MAX = 0.06
+# Adaptive endpointing (browser voice-call only). A browser mic with AGC has a noise floor that can
+# sit ABOVE the fixed 0.01 threshold, so every frame reads as speech and the turn never ends -> the
+# bot never answers. In adaptive mode the ambient floor is estimated as the quietest frame in a
+# rolling window and speech must clear it by _NOISE_SPEECH_FACTOR, capped at _NOISE_RMS_MAX so even
+# a noisy mic can't lift the bar above normal speech. There is no blocking calibration window, so a
+# caller who starts talking the instant the mic opens is still heard (a fixed calibration window
+# mistook those first words for the noise floor and then never detected any speech).
+_NOISE_WINDOW_MS = 1500
+_NOISE_SPEECH_FACTOR = 2.2
+_NOISE_RMS_MAX = 0.04
 
 
 class VadEndpointer:
@@ -72,7 +74,7 @@ class VadEndpointer:
         self.min_speech_frames = max(1, int(cfg.min_speech_ms / cfg.frame_ms))
         self.preroll_frames = max(1, int(_PREROLL_MS / cfg.frame_ms))
         self.adaptive = adaptive
-        self.calib_frames = max(1, int(_CALIB_MS / cfg.frame_ms)) if adaptive else 0
+        self.noise_window = max(1, int(_NOISE_WINDOW_MS / cfg.frame_ms))
         self.reset()
 
     def reset(self) -> None:
@@ -82,32 +84,22 @@ class VadEndpointer:
         self._collected: list[np.ndarray] = []
         self._pending_speech = 0
         self._silent_frames = 0
-        self._noise_rms = 0.0
-        self._calib_left = self.calib_frames
+        self._recent_rms: deque[float] = deque(maxlen=self.noise_window)
 
     def _speech_floor(self) -> float:
-        """Energy a frame must clear to count as speech: the fixed threshold, or the calibrated
-        noise floor scaled up, whichever is higher."""
-        if not self.adaptive:
+        """Energy a frame must clear to count as speech: the fixed threshold, or the rolling
+        ambient-noise floor (quietest recent frame) scaled up, whichever is higher."""
+        if not self.adaptive or not self._recent_rms:
             return self.threshold
-        return max(self.threshold, self._noise_rms * _NOISE_SPEECH_FACTOR)
+        noise = min(min(self._recent_rms), _NOISE_RMS_MAX)
+        return max(self.threshold, noise * _NOISE_SPEECH_FACTOR)
 
     def push_frame(self, frame: np.ndarray) -> np.ndarray | None:
         """Process one ``frame_size`` frame; return the utterance when it ends, else None."""
         rms = float(np.sqrt(np.mean(frame * frame)))
-
-        if self.adaptive and self._calib_left > 0:
-            # Calibration window: the mic is unmuted only after the bot stops speaking, so these
-            # opening frames are reliably background hiss. Track their quietest level as the floor.
-            self._calib_left -= 1
-            seen = rms if self._noise_rms == 0.0 else min(self._noise_rms, rms)
-            self._noise_rms = min(seen, _NOISE_RMS_MAX)
-            self._preroll.append(frame)
-            return None
-
+        if self.adaptive:
+            self._recent_rms.append(rms)  # rolling ambient-floor estimate (quietest recent frame)
         is_speech = rms >= self._speech_floor()
-        if self.adaptive and not is_speech and self._noise_rms > 0.0:
-            self._noise_rms = min(self._noise_rms, rms)  # follow the floor if the room goes quieter
 
         if not self.started:
             if is_speech:

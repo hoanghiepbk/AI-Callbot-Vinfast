@@ -9,6 +9,8 @@ own voice. UI-agnostic, so the turn-taking is unit-testable without Gradio.
 from __future__ import annotations
 
 import io
+import os
+import sys
 import time
 import wave
 from typing import Any, Callable
@@ -18,6 +20,16 @@ import numpy as np
 from callbot.audio.stream import VadEndpointer
 from callbot.audio.vad import VADConfig
 from callbot.pipeline import CallbotPipeline, PipelineTurnResult, _prepare_audio_for_asr
+
+# Set CALLBOT_VOICE_DEBUG=1 to trace the streamed mic loop (chunk arrival, onset, endpoint, ASR)
+# on stderr — used to diagnose "bot never answers" without a browser.
+_DEBUG = os.getenv("CALLBOT_VOICE_DEBUG") == "1"
+
+
+def _dbg(msg: str) -> None:
+    if _DEBUG:
+        print(f"[voice] {msg}", file=sys.stderr, flush=True)
+
 
 # Bot speaks first, like a real call being answered.
 GREETING = "Dạ VinFast xin nghe, em có thể hỗ trợ gì cho mình ạ?"
@@ -63,6 +75,7 @@ class VoiceCallSession:
         self._muted_until = 0.0
         self._max_utt_frames = max(1, int(_MAX_UTTERANCE_S * 1000 / self._vad_config.frame_ms))
         self._utt_frames = 0
+        self._feed_calls = 0  # diagnostics only (CALLBOT_VOICE_DEBUG)
 
     def greet(self) -> PipelineTurnResult:
         """Bot's opening line, spoken first. No user turn is run."""
@@ -80,12 +93,18 @@ class VoiceCallSession:
 
     def feed(self, samples: Any, sample_rate: int) -> PipelineTurnResult | None:
         """Process one streamed mic chunk; return a turn result when an utterance ends."""
+        self._feed_calls += 1
         if self._now() < self._muted_until:
             return None  # bot is speaking — half-duplex, ignore the mic
         chunk = _prepare_audio_for_asr(samples, sample_rate)  # mono float32 @ 16 kHz
         if chunk.size == 0:
             return None
         self._leftover = np.concatenate([self._leftover, chunk]) if self._leftover.size else chunk
+        if _DEBUG and self._feed_calls % 12 == 0:
+            _dbg(
+                f"feed#{self._feed_calls} sr={sample_rate} chunk={chunk.size} "
+                f"started={self._endpointer.started} floor={self._endpointer._speech_floor():.4f}"
+            )
 
         utterance: np.ndarray | None = None
         frame_size = self._endpointer.frame_size
@@ -102,10 +121,13 @@ class VoiceCallSession:
         if utterance is None:
             return None
         self._utt_frames = 0
+        _dbg(f"endpoint: captured {utterance.size / 16000:.2f}s -> running pipeline.turn")
 
         result = self.pipeline.turn(audio=utterance, sample_rate=16000, play_audio=False)
         if not result.user_text.strip():
+            _dbg("asr returned empty -> keep listening (no turn)")
             return None  # ASR filtered noise/silence — keep listening, no turn
+        _dbg(f"turn: user='{result.user_text}' reply='{result.reply_text[:50]}'")
         self._mute_for(result.reply_audio)
         # Arm the longer silence window when the next field is a read-back number, so a
         # mid-number pause does not cut the caller off; also drop any audio buffered mid-turn.
