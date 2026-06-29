@@ -107,6 +107,7 @@ class CallbotPipeline:
         self.auto_play = auto_play
         self._filler_enabled = config.VOICE_FILLER if filler_enabled is None else filler_enabled
         self._filler_index = 0
+        self._filler_cache: dict[str, bytes] = {}  # fixed filler set -> synthesize each once
 
     @classmethod
     def from_dependencies(
@@ -237,11 +238,19 @@ class CallbotPipeline:
         )
 
     def _emit_filler(self) -> str:
-        """Synthesize the next rotating filler and play it in the background (non-blocking)."""
+        """Play the next rotating filler in the background (non-blocking).
+
+        The filler set is fixed (a 3-variant rotation), so each unique clip is synthesized
+        once and cached — later turns reuse the bytes instead of paying TTS again, which
+        matters for cloud TTS where re-synthesizing would add latency ahead of ASR.
+        """
         text = tmpl.filler(self._filler_index)
         self._filler_index += 1
         assert self.tts is not None  # guarded by _wants_filler
-        audio = self.tts.synthesize(text).audio
+        audio = self._filler_cache.get(text)
+        if audio is None:
+            audio = self.tts.synthesize(text).audio
+            self._filler_cache[text] = audio
         if audio:
             threading.Thread(target=_safe_play, args=(audio,), daemon=True).start()
         return text
