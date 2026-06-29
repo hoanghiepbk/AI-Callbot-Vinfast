@@ -28,6 +28,15 @@ from callbot.models.schemas import READBACK_REQUIRED
 # not clipped when collection starts. ~150 ms covers a typical onset.
 _PREROLL_MS = 150
 
+# Adaptive endpointing (browser voice-call only). A browser mic with AGC has a noise floor that
+# can sit ABOVE the fixed 0.01 threshold, so every frame reads as speech and the turn never ends
+# -> the bot never answers. In adaptive mode we calibrate the ambient floor over the first
+# _CALIB_MS after the endpointer is armed, then require speech to clear it by _NOISE_SPEECH_FACTOR
+# (clamped so a loud room can't lift the bar above real speech).
+_CALIB_MS = 150
+_NOISE_SPEECH_FACTOR = 2.5
+_NOISE_RMS_MAX = 0.06
+
 
 class VadEndpointer:
     """Frame-by-frame energy-VAD endpointing state machine.
@@ -41,11 +50,17 @@ class VadEndpointer:
     A candidate onset must reach ``min_speech_frames`` CONSECUTIVE speech frames to confirm (so
     a transient click never arms a capture), and a ``_PREROLL_MS`` ring buffer is prepended so a
     soft word-initial consonant is not clipped. ``field_name`` arms the longer numeric-field
-    silence window for read-back fields (phone/plate/VIN).
+    silence window for read-back fields (phone/plate/VIN). ``adaptive`` calibrates the speech
+    threshold to the ambient noise floor (used by the browser voice-call, where a fixed threshold
+    is too low for an AGC mic and the turn would never end).
     """
 
     def __init__(
-        self, vad_config: VADConfig | None = None, *, field_name: str | None = None
+        self,
+        vad_config: VADConfig | None = None,
+        *,
+        field_name: str | None = None,
+        adaptive: bool = False,
     ) -> None:
         cfg = vad_config or VADConfig()
         self.frame_size = max(1, int(cfg.sample_rate * cfg.frame_ms / 1000))
@@ -56,6 +71,8 @@ class VadEndpointer:
         self.max_silent_frames = max(1, int(silence_ms / cfg.frame_ms))
         self.min_speech_frames = max(1, int(cfg.min_speech_ms / cfg.frame_ms))
         self.preroll_frames = max(1, int(_PREROLL_MS / cfg.frame_ms))
+        self.adaptive = adaptive
+        self.calib_frames = max(1, int(_CALIB_MS / cfg.frame_ms)) if adaptive else 0
         self.reset()
 
     def reset(self) -> None:
@@ -65,10 +82,32 @@ class VadEndpointer:
         self._collected: list[np.ndarray] = []
         self._pending_speech = 0
         self._silent_frames = 0
+        self._noise_rms = 0.0
+        self._calib_left = self.calib_frames
+
+    def _speech_floor(self) -> float:
+        """Energy a frame must clear to count as speech: the fixed threshold, or the calibrated
+        noise floor scaled up, whichever is higher."""
+        if not self.adaptive:
+            return self.threshold
+        return max(self.threshold, self._noise_rms * _NOISE_SPEECH_FACTOR)
 
     def push_frame(self, frame: np.ndarray) -> np.ndarray | None:
         """Process one ``frame_size`` frame; return the utterance when it ends, else None."""
-        is_speech = float(np.sqrt(np.mean(frame * frame))) >= self.threshold
+        rms = float(np.sqrt(np.mean(frame * frame)))
+
+        if self.adaptive and self._calib_left > 0:
+            # Calibration window: the mic is unmuted only after the bot stops speaking, so these
+            # opening frames are reliably background hiss. Track their quietest level as the floor.
+            self._calib_left -= 1
+            seen = rms if self._noise_rms == 0.0 else min(self._noise_rms, rms)
+            self._noise_rms = min(seen, _NOISE_RMS_MAX)
+            self._preroll.append(frame)
+            return None
+
+        is_speech = rms >= self._speech_floor()
+        if self.adaptive and not is_speech and self._noise_rms > 0.0:
+            self._noise_rms = min(self._noise_rms, rms)  # follow the floor if the room goes quieter
 
         if not self.started:
             if is_speech:

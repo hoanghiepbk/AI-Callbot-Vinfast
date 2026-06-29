@@ -26,6 +26,10 @@ GREETING = "Dạ VinFast xin nghe, em có thể hỗ trợ gì cho mình ạ?"
 # its echo through speakers) is not captured as the next utterance.
 _MUTE_MARGIN_S = 0.3
 
+# Safety cap: if the energy-VAD never sees a trailing pause (e.g. constant background noise), the
+# turn would accumulate forever and the bot would never answer. Force the turn after this long.
+_MAX_UTTERANCE_S = 15.0
+
 
 def _wav_info(audio: bytes | None) -> tuple[float, int | None]:
     """Return (duration_seconds, sample_rate) of a WAV blob; (0.0, None) if empty/invalid."""
@@ -54,9 +58,11 @@ class VoiceCallSession:
         self.pipeline = pipeline
         self._now = now
         self._vad_config = VADConfig()
-        self._endpointer = VadEndpointer(self._vad_config)
+        self._endpointer = VadEndpointer(self._vad_config, adaptive=True)
         self._leftover = np.empty(0, dtype=np.float32)
         self._muted_until = 0.0
+        self._max_utt_frames = max(1, int(_MAX_UTTERANCE_S * 1000 / self._vad_config.frame_ms))
+        self._utt_frames = 0
 
     def greet(self) -> PipelineTurnResult:
         """Bot's opening line, spoken first. No user turn is run."""
@@ -87,10 +93,15 @@ class VoiceCallSession:
             frame = self._leftover[:frame_size]
             self._leftover = self._leftover[frame_size:]
             utterance = self._endpointer.push_frame(frame)
+            if utterance is None and self._endpointer.started:
+                self._utt_frames += 1
+                if self._utt_frames >= self._max_utt_frames:
+                    utterance = self._endpointer.flush()  # VAD missed the pause — force the turn
             if utterance is not None:
                 break
         if utterance is None:
             return None
+        self._utt_frames = 0
 
         result = self.pipeline.turn(audio=utterance, sample_rate=16000, play_audio=False)
         if not result.user_text.strip():
@@ -99,16 +110,18 @@ class VoiceCallSession:
         # Arm the longer silence window when the next field is a read-back number, so a
         # mid-number pause does not cut the caller off; also drop any audio buffered mid-turn.
         next_field = result.state.get("current_field") or result.state.get("pending_field")
-        self._endpointer = VadEndpointer(self._vad_config, field_name=next_field)
+        self._endpointer = VadEndpointer(self._vad_config, field_name=next_field, adaptive=True)
         self._leftover = np.empty(0, dtype=np.float32)
+        self._utt_frames = 0
         return result
 
     def reset(self) -> None:
         """Start a fresh call: wipe the pipeline conversation + endpointing state."""
         self.pipeline.reset()
-        self._endpointer = VadEndpointer(self._vad_config)
+        self._endpointer = VadEndpointer(self._vad_config, adaptive=True)
         self._leftover = np.empty(0, dtype=np.float32)
         self._muted_until = 0.0
+        self._utt_frames = 0
 
     def _synthesize(self, text: str) -> bytes | None:
         if self.pipeline.tts is None:

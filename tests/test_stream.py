@@ -12,7 +12,7 @@ import types
 
 import numpy as np
 
-from callbot.audio.stream import StreamingMicrophone
+from callbot.audio.stream import StreamingMicrophone, VadEndpointer
 
 _SR = 16000
 _FRAME = _SR * 30 // 1000  # 30 ms frame = 480 samples
@@ -25,6 +25,22 @@ def _speech(n_frames: int) -> np.ndarray:
 
 def _silence(n_frames: int) -> np.ndarray:
     return np.zeros(n_frames * _FRAME, dtype=np.float32)
+
+
+def _level(n_frames: int, rms: float) -> np.ndarray:
+    return np.full(n_frames * _FRAME, rms, dtype=np.float32)
+
+
+def _feed_endpointer(endpointer: VadEndpointer, audio: np.ndarray) -> np.ndarray | None:
+    """Push an audio buffer through an endpointer frame-by-frame; return the captured utterance."""
+    captured = None
+    for offset in range(0, audio.size, _FRAME):
+        frame = audio[offset : offset + _FRAME]
+        if frame.size == _FRAME:
+            result = endpointer.push_frame(frame)
+            if result is not None:
+                captured = result
+    return captured
 
 
 def _install_fake_sd(monkeypatch, audio: np.ndarray) -> None:
@@ -89,6 +105,26 @@ def test_preroll_keeps_quiet_onset(monkeypatch):
     assert utterance is not None
     # The buffer opens with the quiet lead-in (pre-roll), not with speech-level energy.
     assert float(np.max(np.abs(utterance[:_FRAME]))) < 0.01
+
+
+def test_fixed_threshold_hangs_on_a_noisy_floor():
+    # A mic whose ambient floor (RMS 0.04) sits ABOVE the fixed 0.01 threshold: every frame reads
+    # as speech, so the trailing 'pause' never registers and the turn never ends. This is the
+    # browser bug the adaptive mode fixes — documented here as the contrast case.
+    audio = np.concatenate([_level(6, 0.04), _level(8, 0.2), _level(30, 0.04)])
+
+    assert _feed_endpointer(VadEndpointer(adaptive=False), audio) is None
+
+
+def test_adaptive_endpoints_above_the_noise_floor():
+    # Same noisy mic: adaptive calibration lifts the speech bar above the 0.04 ambient floor, so
+    # real speech (0.2) is captured and the return to ambient ends the turn — the bot can answer.
+    audio = np.concatenate([_level(6, 0.04), _level(8, 0.2), _level(30, 0.04)])
+
+    utterance = _feed_endpointer(VadEndpointer(adaptive=True), audio)
+
+    assert utterance is not None
+    assert utterance.size >= 8 * _FRAME
 
 
 def test_readback_field_uses_longer_silence_window(monkeypatch):

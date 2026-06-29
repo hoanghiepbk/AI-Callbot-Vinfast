@@ -32,8 +32,10 @@ def _silence(n_frames: int) -> np.ndarray:
 
 
 def _utterance() -> np.ndarray:
-    # 5 speech frames (confirms onset) + 30 silent frames (clears the 700 ms window).
-    return np.concatenate([_speech(5), _silence(30)])
+    # 6 ambient frames (adaptive floor calibration) + 5 speech (confirms onset) + 30 silent
+    # (clears the 700 ms window). The bot mutes the mic after speaking, so a real turn likewise
+    # opens with background before the caller talks.
+    return np.concatenate([_silence(6), _speech(5), _silence(30)])
 
 
 class _StubNormalizer:
@@ -107,6 +109,19 @@ def test_mic_is_muted_while_bot_speaks() -> None:
     # After playback + margin -> listening again, a new utterance runs a turn.
     clock.t = 1.0
     assert session.feed(_utterance(), _SR) is not None
+
+
+def test_long_utterance_without_a_pause_still_answers() -> None:
+    # Constant speech with no trailing silence (or a noisy room the VAD can't endpoint): the
+    # safety cap must still force a turn so the caller is never left waiting on a silent bot.
+    session = VoiceCallSession(_pipeline())
+
+    # 6 ambient frames to calibrate, then > _MAX_UTTERANCE_S (15 s) of unbroken speech.
+    long = np.concatenate([_silence(6), _speech(700)])  # 700 frames * 30 ms = 21 s
+    result = session.feed(long, _SR)
+
+    assert result is not None
+    assert result.user_text == "em hoi don hang"
 
 
 def test_greet_speaks_first_without_a_user_turn() -> None:
