@@ -113,7 +113,14 @@ class FasterWhisperASR:
         if sample_rate != 16000:
             raise ValueError("FasterWhisperASR expects 16 kHz mono audio")
 
-        segments, info = self.model.transcribe(samples, language=self.language, vad_filter=False)
+        # vad_filter drops non-speech before decoding; condition_on_previous_text=False stops
+        # Whisper from hallucinating boilerplate (e.g. "subscribe…") on silence/noise.
+        segments, info = self.model.transcribe(
+            samples,
+            language=self.language,
+            vad_filter=True,
+            condition_on_previous_text=False,
+        )
         text = " ".join(segment.text.strip() for segment in segments).strip()
         latency_ms = (time.perf_counter() - started) * 1000
         confidence = getattr(info, "language_probability", None)

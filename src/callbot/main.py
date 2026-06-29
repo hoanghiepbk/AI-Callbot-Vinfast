@@ -6,10 +6,13 @@ import argparse
 import json
 from typing import Any, Sequence
 
-from callbot.audio.recorder import MicrophoneRecorder
-from callbot.audio.vad import EnergyVAD
+from callbot.audio.playback import play_wav_bytes
+from callbot.audio.stream import StreamingMicrophone
 from callbot.gradio_app import create_demo
 from callbot.pipeline import CallbotPipeline
+
+# Fixed opening line so a voice call starts like a real phone call (bot greets first).
+_VOICE_GREETING = "Dạ VinFast xin nghe, em có thể hỗ trợ gì cho mình ạ?"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,8 +24,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--listen-seconds",
         type=float,
-        default=4.0,
-        help="Seconds to record per voice turn",
+        default=20.0,
+        help="Voice mode: max seconds for one utterance before force-cutting (VAD ends turns earlier on a pause)",
     )
     parser.add_argument(
         "--share",
@@ -85,25 +88,54 @@ def run_text_mode(pipeline: CallbotPipeline) -> int:
             return 0
 
 
-def run_voice_mode(pipeline: CallbotPipeline, listen_seconds: float) -> int:
-    recorder = MicrophoneRecorder()
-    vad = EnergyVAD()
-    print(f"Voice mode. Recording {listen_seconds:.1f}s per turn. Ctrl-C to end.")
+def _greet(pipeline: CallbotPipeline) -> None:
+    """Bot speaks the opening line first, so the call feels like a real phone call."""
+    print(f"Bot:   {_VOICE_GREETING}")
+    if pipeline.tts is None:
+        return
+    try:
+        audio = pipeline.tts.synthesize(_VOICE_GREETING).audio
+        if audio:
+            play_wav_bytes(audio)
+    except Exception:  # noqa: BLE001 - greeting audio is best-effort
+        pass
+
+
+def run_voice_mode(pipeline: CallbotPipeline, max_utterance_seconds: float) -> int:
+    """Real-time, half-duplex voice loop.
+
+    The mic listens continuously; energy VAD detects when the caller stops
+    speaking and ends the turn on a trailing pause — no fixed record window.
+    The bot replies (TTS plays to completion), then listening resumes.
+    """
+    mic = StreamingMicrophone()
+    print(
+        "Voice mode (real-time). Cứ nói tự nhiên — bot tự nhận biết khi bạn ngừng nói. "
+        "Ctrl-C để kết thúc cuộc gọi."
+    )
+    _greet(pipeline)
+    next_field: str | None = None
     while True:
         try:
-            audio = recorder.record_seconds(listen_seconds)
-            trimmed = vad.trim_utterance(audio)
-            if trimmed.size == 0:
-                print("(silence)")
-                continue
+            utterance = mic.listen_utterance(
+                field_name=next_field,
+                max_utterance_seconds=max_utterance_seconds,
+            )
+            if utterance is None:
+                continue  # only silence so far; keep listening
             result = pipeline.turn(
-                audio=trimmed,
-                sample_rate=recorder.config.sample_rate,
+                audio=utterance,
+                sample_rate=mic.recorder_config.sample_rate,
                 play_audio=True,
             )
+            if not result.user_text.strip():
+                continue  # ASR filtered silence/noise — keep listening, no turn
             _print_turn(result)
             if result.done:
                 return 0
+            # Arm the longer silence window if the next field is a read-back number,
+            # so a mid-number pause does not cut the caller off.
+            next_field = result.state.get("current_field") or result.state.get("pending_field")
         except KeyboardInterrupt:
             print()
             final = pipeline.finalize()
