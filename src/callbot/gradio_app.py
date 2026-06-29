@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import html as _html
 import json as _json
+import os as _os
 import re as _re
+import sys as _sys
+import time as _time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -12,6 +15,21 @@ from typing import Any
 from callbot.audio.playback import decode_wav_bytes
 from callbot.pipeline import CallbotPipeline
 from callbot.voice_call import VoiceCallSession
+
+# CALLBOT_VOICE_DEBUG=1 traces whether the voice-call Gradio events actually fire (start_recording,
+# stream) — used to tell "browser never streams" apart from "VAD never endpoints".
+_VOICE_DEBUG = _os.getenv("CALLBOT_VOICE_DEBUG") == "1"
+
+
+def _vdbg(msg: str) -> None:
+    if _VOICE_DEBUG:
+        print(f"[gradio-voice] {msg}", file=_sys.stderr, flush=True)
+
+
+# The streaming mic re-fires start_recording every ~0.5s (the recorder restarts while the bot's
+# audio plays through the phone speaker). Only a gap longer than this counts as a genuinely new
+# call; shorter re-fires must NOT reset the session, or the VAD never accumulates a full utterance.
+_CALL_RESTART_GAP_S = 6.0
 
 
 def _load_css() -> str:
@@ -299,8 +317,19 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
     # Hands-free voice-call ('Gọi điện') mode: one session wraps the same pipeline, half-duplex
     # turn-taking over a streamed mic.
     voice_session = VoiceCallSession(pipeline)
+    voice_state = {"active": False, "last_activity": 0.0}
 
     def _voice_start():
+        now = _time.monotonic()
+        # A re-fired start_recording within a live call is a spurious recorder restart (the bot's
+        # audio briefly stops the mic) — keep the session so the VAD does not lose the utterance.
+        if voice_state["active"] and (now - voice_state["last_activity"]) < _CALL_RESTART_GAP_S:
+            _vdbg("start_recording re-fired (spurious restart) -> keep session")
+            voice_state["last_activity"] = now
+            return (gr.skip(),) * 5
+        _vdbg("start_recording: new call -> greeting + reset")
+        voice_state["active"] = True
+        voice_state["last_activity"] = now
         voice_session.reset()
         history.clear()
         greeting = voice_session.greet()
@@ -316,6 +345,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
     def _voice_stream(chunk):
         if chunk is None:
             return (gr.skip(),) * 5
+        voice_state["last_activity"] = _time.monotonic()  # call is alive; suppress spurious resets
         sample_rate, samples = chunk
         try:
             result = voice_session.feed(samples, sample_rate)
@@ -323,6 +353,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
             return gr.skip(), gr.skip(), _error_html(exc), gr.skip(), gr.skip()
         if result is None:
             return (gr.skip(),) * 5
+        _vdbg(f"TURN: user='{result.user_text}' reply='{result.reply_text[:40]}'")
         history.append(("user", result.user_text))
         if result.reply_text.strip():
             history.append(("bot", result.reply_text))
@@ -401,7 +432,8 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                         stream_every=0.25,
                         time_limit=600,
                     )
-                    # Caller stops recording -> finalize the call and show the final JSON deliverable.
+                    # Caller stops recording -> finalize the call and show the final JSON
+                    # deliverable.
                     call_mic.stop_recording(_voice_finalize, outputs=[call_state])
 
                 with gr.Tab("🎙️ Bộ đàm"):
