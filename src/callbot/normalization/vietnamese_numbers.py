@@ -123,7 +123,7 @@ def _parse_number_words(tokens: list[str]) -> list[int]:
 
         if token in _DIGIT_WORDS:
             # "ba muoi" is 30, but in phones/VINs "ba" alone is digit 3.
-            if i + 1 < len(tokens) and tokens[i + 1] in {"muoi", "muoi"}:
+            if i + 1 < len(tokens) and tokens[i + 1] == "muoi":
                 values.append(int(_DIGIT_WORDS[token]) * 10)
                 i += 2
                 continue
@@ -131,7 +131,7 @@ def _parse_number_words(tokens: list[str]) -> list[int]:
             i += 1
             continue
 
-        if token in {"muoi", "muoi"}:
+        if token == "muoi":
             if values and values[-1] < 10:
                 values[-1] *= 10
             else:
@@ -155,7 +155,7 @@ def _digits(text: str) -> str:
 def _parse_integer_phrase(text: str) -> int | None:
     tokens = _tokens(text)
     multiplier = 1
-    if any(token in {"van", "muoi-nghin"} for token in tokens):
+    if "van" in tokens:  # "vạn" = 10,000 ("mười nghìn" is handled via the "nghin" path below)
         multiplier = 10000
     elif any(token in {"nghin", "ngan"} for token in tokens):
         multiplier = 1000
@@ -196,7 +196,7 @@ def _vin_candidate(raw: str) -> str:
             parts.extend(ch.upper() for ch in token if ch.isalnum())
         elif token.isdigit():
             parts.extend(token)
-        elif token in _DIGIT_WORDS and i + 1 < len(tokens) and tokens[i + 1] in {"muoi", "muoi"}:
+        elif token in _DIGIT_WORDS and i + 1 < len(tokens) and tokens[i + 1] == "muoi":
             parts.append(str(int(_DIGIT_WORDS[token]) * 10))
             i += 1
         elif token in _DIGIT_WORDS:
