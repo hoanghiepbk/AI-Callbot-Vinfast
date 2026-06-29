@@ -163,13 +163,16 @@ python -m venv .venv
 .venv\Scripts\activate                 # Linux/macOS: source .venv/bin/activate
 pip install -e ".[dev]"                # callbot + pinned runtime + eval/dev tools (jiwer, pytest…)
 # pip install -e .                      # runtime only (no eval/dev tooling)
-# pip install -e ".[asr,ui]"           # ASR conversion deps + Gradio demo (for voice/UI)
+# pip install -e ".[asr,tts,ui]"       # ASR conversion + Piper TTS + Gradio demo
+# pip install -r requirements.txt       # equivalent CORE runtime (mic→ASR→LLM→JSON), pinned
 cp .env.example .env                    # configure OLLAMA_HOST, model names, etc.
 ```
 
-All dependencies are pinned with `==` in [pyproject.toml](pyproject.toml). Verified from a
-clean Python 3.11 venv: `pip install -e ".[dev]"` exits 0 and `python -m eval.run_eval`
-prints metrics (see [docs/eval_report.md](docs/eval_report.md)).
+All dependencies are pinned with `==` in [pyproject.toml](pyproject.toml) (the source of truth);
+[requirements.txt](requirements.txt) mirrors the **core** runtime so `pip install -r requirements.txt`
+also yields a working voice bot, with optional `.[asr]` / `.[tts]` / `.[ui]` / `.[gpu]` extras
+installed via pyproject as needed. Verified from a clean Python 3.11 venv: `pip install -e ".[dev]"`
+exits 0 and `python -m eval.run_eval` prints metrics (see [docs/eval_report.md](docs/eval_report.md)).
 
 ### Setup ASR (required for voice mode)
 
@@ -238,6 +241,16 @@ python -m callbot.main --gradio --host 0.0.0.0 --port 7860   # LAN access
 
 Text mode needs only Ollama running. Voice mode additionally needs a microphone, ASR
 weights, and a TTS engine (`TTS_ENGINE=none` for text-only output).
+
+**Voice mode is real-time and half-duplex.** The mic listens continuously; a VAD endpointer
+ends each turn on a trailing pause (no fixed record window), so you just talk naturally — the
+bot greets first, replies aloud, then resumes listening. Two `.env` knobs tune it per machine:
+
+- `MIC_GAIN` (default `1.0`) — software input gain. Quiet built-in laptop mics can sit below
+  the VAD threshold so the bot never detects a turn; raise to `8–12`. Diagnose levels with
+  `python scripts/mic_check.py`.
+- `ASR_BEAM_SIZE` (default `5`) — decoding beam. Keep `5` on GPU (accurate); set `1` (greedy)
+  on a slow CPU for ~2–3× faster transcription at a small accuracy cost.
 
 **On the demo machine, create `.env` from `.env.example` first** (`cp .env.example .env`):
 it pins `ASR_DEVICE=cuda` (GPU — without it ASR silently falls back to CPU at ~6s/turn),
