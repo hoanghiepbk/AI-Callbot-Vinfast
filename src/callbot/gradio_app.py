@@ -135,6 +135,15 @@ def _bot_reply_html(text: str) -> str:
     return f"<div class='vf-reply'>{_html.escape(text)}</div>"
 
 
+def _error_html(exc: Exception) -> str:
+    """Friendly inline error so a transient ASR/LLM/network hiccup never crashes the live call."""
+    return (
+        "<div class='vf-reply' style='color:#b91c1c'>"
+        f"Xin lỗi, có lỗi khi xử lý ({_html.escape(type(exc).__name__)}). Mời nói lại ạ."
+        "</div>"
+    )
+
+
 def _user_said_html(text: str) -> str:
     if not text:
         return "<div class='vf-empty'>Đang chờ khách nói…</div>"
@@ -245,7 +254,10 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
     history: list[tuple[str, str]] = []
 
     def _turn(audio, text):
-        result = pipeline.turn(audio=audio, text=text or None, play_audio=False)
+        try:
+            result = pipeline.turn(audio=audio, text=text or None, play_audio=False)
+        except Exception as exc:  # noqa: BLE001 - keep the demo alive on a transient backend error
+            return _error_html(exc), _history_html(history), "", "", None, ""
         if result.user_text.strip():
             history.append(("user", result.user_text))
         if result.reply_text.strip():
@@ -267,6 +279,14 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
 
     def _finalize():
         return _json_dark(pipeline.finalize().model_dump(mode="json"))
+
+    def _voice_finalize():
+        # Caller hung up (stopped recording): assemble + show the final structured JSON — the
+        # system's actual deliverable (category, fields, post-call summary/sentiment).
+        try:
+            return _json_dark(pipeline.finalize().model_dump(mode="json"))
+        except Exception as exc:  # noqa: BLE001 - never crash on call end
+            return _error_html(exc)
 
     def _reset():
         # New call: wipe shared conversation state so the next caller starts clean.
@@ -295,7 +315,10 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
         if chunk is None:
             return (gr.skip(),) * 5
         sample_rate, samples = chunk
-        result = voice_session.feed(samples, sample_rate)
+        try:
+            result = voice_session.feed(samples, sample_rate)
+        except Exception as exc:  # noqa: BLE001 - a backend hiccup must not kill the live call
+            return gr.skip(), gr.skip(), _error_html(exc), gr.skip(), gr.skip()
         if result is None:
             return (gr.skip(),) * 5
         history.append(("user", result.user_text))
@@ -377,6 +400,8 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                         stream_every=0.25,
                         time_limit=600,
                     )
+                    # Caller stops recording -> finalize the call and show the final JSON deliverable.
+                    call_mic.stop_recording(_voice_finalize, outputs=[call_state])
 
                 with gr.Tab("🎙️ Bộ đàm"):
                     gr.HTML(_INTERCOM_INFO)

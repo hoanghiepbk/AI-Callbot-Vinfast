@@ -170,9 +170,9 @@ class CallbotPipeline:
         proxy = _LatencyLLMProxy(llm)
         engine = DialogueEngine(proxy, normalizer)
         if include_asr and asr is None:
-            from callbot.asr.faster_whisper_asr import FasterWhisperASR
+            from callbot.asr import create_asr
 
-            asr = FasterWhisperASR()
+            asr = create_asr()
         return cls(
             engine=engine,
             asr=asr if include_asr else None,
