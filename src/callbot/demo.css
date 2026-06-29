@@ -73,8 +73,11 @@ footer { display: none !important; }
   color: rgba(255, 255, 255, .7); margin-bottom: 11px;
 }
 .vf-hero h1 {
-  margin: 0; font-size: clamp(26px, 3.4vw, 38px); font-weight: 800; letter-spacing: -.02em; line-height: 1.1;
+  margin: 0; font-size: clamp(26px, 3.4vw, 38px); font-weight: 800; letter-spacing: -.02em;
+  line-height: 1.1; color: #fff !important;
 }
+.vf-hero .vf-hero-eyebrow { color: rgba(255, 255, 255, .7) !important; }
+.vf-hero p { color: rgba(255, 255, 255, .82) !important; }
 .vf-hero p {
   margin: 12px 0 18px; font-size: clamp(14px, 1.5vw, 16px); line-height: 1.6;
   color: rgba(255, 255, 255, .82); max-width: 50ch;

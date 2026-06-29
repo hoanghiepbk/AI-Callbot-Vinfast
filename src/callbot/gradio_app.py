@@ -56,7 +56,6 @@ _HERO_HTML = (
     "<div class='vf-kpis'>"
     "<div class='vf-kpi'><small><span class='ms'>verified</span>Xử lý</small>"
     "<b>100% local</b></div>"
-    "<div class='vf-kpi'><small><span class='ms'>bolt</span>Độ trễ</small><b>~0,9s</b></div>"
     "<div class='vf-kpi'><small><span class='ms'>graphic_eq</span>Giọng</small>"
     "<b>Tiếng Việt</b></div>"
     "</div></div>"
