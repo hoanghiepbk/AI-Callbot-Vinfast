@@ -307,7 +307,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
             with gr.Tabs(elem_classes="vf-tabs"):
                 with gr.Tab("📞 Gọi điện"):
                     gr.HTML(_CALL_INFO)
-                    with gr.Row():
+                    with gr.Row(elem_classes="vf-cols"):
                         with gr.Column(scale=1, min_width=330):
                             with gr.Group(elem_classes="vf-card"):
                                 gr.HTML(
@@ -370,7 +370,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
 
                 with gr.Tab("🎙️ Bộ đàm"):
                     gr.HTML(_INTERCOM_INFO)
-                    with gr.Row():
+                    with gr.Row(elem_classes="vf-cols"):
                         with gr.Column(scale=1, min_width=330):
                             with gr.Group(elem_classes="vf-card"):
                                 gr.HTML(
@@ -397,7 +397,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                                 submit = gr.Button(
                                     "Gửi lượt", variant="primary", elem_classes="vf-send"
                                 )
-                                with gr.Row():
+                                with gr.Row(elem_classes="vf-btnrow"):
                                     finalize_btn = gr.Button(
                                         "Kết thúc", variant="secondary", elem_classes="vf-end"
                                     )
