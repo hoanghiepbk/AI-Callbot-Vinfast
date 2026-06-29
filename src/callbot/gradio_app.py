@@ -432,7 +432,8 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                         stream_every=0.25,
                         time_limit=600,
                     )
-                    # Caller stops recording -> finalize the call and show the final JSON deliverable.
+                    # Caller stops recording -> finalize the call and show the final JSON
+                    # deliverable.
                     call_mic.stop_recording(_voice_finalize, outputs=[call_state])
 
                 with gr.Tab("🎙️ Bộ đàm"):
