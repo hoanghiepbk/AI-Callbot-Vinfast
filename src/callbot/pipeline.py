@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from typing import Any
 
+import numpy as np
 from pydantic import BaseModel
 
 from callbot import config
@@ -18,6 +20,9 @@ from callbot.models.schemas import FinalOutput
 from callbot.normalization.base import Normalizer
 from callbot.normalization.vietnamese_numbers import VietnameseNormalizer
 from callbot.tts import TTS, create_tts
+
+logger = logging.getLogger(__name__)
+_warned_no_soxr = False
 
 
 def _safe_play(audio: bytes) -> None:
@@ -69,6 +74,42 @@ def _split_audio_input(
     return audio, sample_rate
 
 
+def _resample_to_16k(samples: np.ndarray, sample_rate: int) -> np.ndarray:
+    """Resample to 16 kHz for ASR. Prefers soxr (anti-aliased, speech-grade); falls back to
+    linear interpolation with a one-time warning when soxr is absent (e.g. the lean CI env)."""
+    try:
+        import soxr
+
+        return np.asarray(soxr.resample(samples, sample_rate, 16000), dtype=np.float32)
+    except ImportError:
+        global _warned_no_soxr
+        if not _warned_no_soxr:
+            logger.warning(
+                "soxr not installed; falling back to linear resample (lower quality). "
+                'Install with: pip install -e ".[asr]"'
+            )
+            _warned_no_soxr = True
+        n_out = max(1, round(len(samples) * 16000 / sample_rate))
+        x_new = np.linspace(0, len(samples) - 1, n_out)
+        return np.interp(x_new, np.arange(len(samples)), samples).astype(np.float32)
+
+
+def _prepare_audio_for_asr(samples: Any, sample_rate: int) -> np.ndarray:
+    """Normalize arbitrary mic/file audio to what FasterWhisperASR expects: float32 mono in
+    [-1, 1] at 16 kHz. Gradio's Audio(type="numpy") returns int16 at the device's native rate
+    (commonly 48 kHz), so we rescale the integer PCM and resample down to 16 kHz."""
+    arr = np.asarray(samples)
+    if arr.dtype.kind in ("i", "u"):  # int16/int32 PCM (gradio mic) -> float32 [-1, 1]
+        arr = arr.astype(np.float32) / float(np.iinfo(arr.dtype).max)
+    else:
+        arr = arr.astype(np.float32)
+    if arr.ndim > 1:  # stereo / multi-channel -> mono
+        arr = arr.mean(axis=1)
+    if sample_rate != 16000:
+        arr = _resample_to_16k(arr, sample_rate)
+    return arr
+
+
 class PipelineTurnResult(BaseModel):
     user_text: str
     reply_text: str
@@ -107,6 +148,7 @@ class CallbotPipeline:
         self.auto_play = auto_play
         self._filler_enabled = config.VOICE_FILLER if filler_enabled is None else filler_enabled
         self._filler_index = 0
+        self._filler_cache: dict[str, bytes] = {}  # fixed filler set -> synthesize each once
 
     @classmethod
     def from_dependencies(
@@ -185,7 +227,10 @@ class CallbotPipeline:
             if self.asr is None:
                 raise RuntimeError("ASR is not configured")
             audio_data, sr = _split_audio_input(audio, sr)
-            asr_result = self.asr.transcribe(audio_data, sample_rate=sr)
+            # Gradio/mic audio is int16 at the device rate (e.g. 48 kHz); ASR needs float32
+            # mono @ 16 kHz, so normalize + resample here (the seam both UI and voice share).
+            audio_16k = _prepare_audio_for_asr(audio_data, sr)
+            asr_result = self.asr.transcribe(audio_16k, sample_rate=16000)
             user_text = asr_result.text
             asr_latency_ms = asr_result.latency_ms
             if not (user_text or "").strip():
@@ -249,11 +294,19 @@ class CallbotPipeline:
         )
 
     def _emit_filler(self) -> str:
-        """Synthesize the next rotating filler and play it in the background (non-blocking)."""
+        """Play the next rotating filler in the background (non-blocking).
+
+        The filler set is fixed (a 3-variant rotation), so each unique clip is synthesized
+        once and cached — later turns reuse the bytes instead of paying TTS again, which
+        matters for cloud TTS where re-synthesizing would add latency ahead of ASR.
+        """
         text = tmpl.filler(self._filler_index)
         self._filler_index += 1
         assert self.tts is not None  # guarded by _wants_filler
-        audio = self.tts.synthesize(text).audio
+        audio = self._filler_cache.get(text)
+        if audio is None:
+            audio = self.tts.synthesize(text).audio
+            self._filler_cache[text] = audio
         if audio:
             threading.Thread(target=_safe_play, args=(audio,), daemon=True).start()
         return text

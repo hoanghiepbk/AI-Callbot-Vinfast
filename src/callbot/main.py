@@ -143,15 +143,37 @@ def run_voice_mode(pipeline: CallbotPipeline, max_utterance_seconds: float) -> i
             return 130
 
 
+def _warmup_pipeline(pipeline: CallbotPipeline) -> None:
+    """Pre-load ASR + LLM + TTS so the first caller turn is warm (~3-4s) instead of a 20-30s
+    cold start. Best-effort at boot: any failure here must not stop the server launching."""
+    import numpy as np
+
+    print("Warming up ASR + LLM + TTS (first-turn cold-start avoidance) ...", flush=True)
+    try:
+        if pipeline.asr is not None:
+            pipeline.asr.transcribe(np.zeros(16000, dtype=np.float32), sample_rate=16000)
+    except Exception as exc:  # noqa: BLE001 - warm-up is best-effort
+        print(f"  ASR warm-up skipped: {exc}", flush=True)
+    try:
+        pipeline.turn(text="alo", play_audio=False)  # warms the LLM (+ TTS synthesis)
+    except Exception as exc:  # noqa: BLE001 - warm-up is best-effort
+        print(f"  LLM/TTS warm-up skipped: {exc}", flush=True)
+    finally:
+        pipeline.reset()  # discard the warm-up turn so the demo starts on a clean call
+    print("Warm-up done.", flush=True)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.gradio:
-        demo = create_demo()
+        pipeline = CallbotPipeline.from_env(include_asr=True)
+        demo = create_demo(pipeline=pipeline)
         if not demo.available:
             print("gradio is not installed")
             return 1
+        _warmup_pipeline(pipeline)  # pre-load models so the first caller isn't cold (~20-30s)
         launch_kwargs: dict[str, Any] = {}
         if args.share:
             launch_kwargs["share"] = True

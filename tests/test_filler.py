@@ -49,3 +49,12 @@ def test_filler_rotates_variants():
     assert p._emit_filler() == "Dạ em nghe ạ."
     assert p._emit_filler() == "Dạ anh/chị chờ em chút ạ."
     assert tts.calls == ["Dạ vâng ạ.", "Dạ em nghe ạ.", "Dạ anh/chị chờ em chút ạ."]
+
+
+def test_filler_audio_is_cached_not_resynthesized():
+    # Fixed filler set: across two full rotations each clip is synthesized exactly once.
+    tts = _FakeTTS()
+    p = _pipeline(True, tts)
+    for _ in range(6):
+        p._emit_filler()
+    assert tts.calls == ["Dạ vâng ạ.", "Dạ em nghe ạ.", "Dạ anh/chị chờ em chút ạ."]

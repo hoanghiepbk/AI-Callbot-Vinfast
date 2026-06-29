@@ -31,6 +31,8 @@ dev = [
 asr = [
     "ctranslate2==4.8.0",
     "transformers==5.12.1",
+    # Speech-grade resampler: mic/file audio (e.g. 48 kHz from a gradio mic) -> 16 kHz for ASR.
+    "soxr==1.1.0",
 ]
 # Gradio web demo (callbot.main --gradio).
 ui = [

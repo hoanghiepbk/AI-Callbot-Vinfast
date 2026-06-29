@@ -30,7 +30,11 @@ def _load_env_file(path: Path) -> None:
 
 _load_env_file(_ENV_PATH)
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+# Use 127.0.0.1 (IPv4) not "localhost": after httpx's 5s keep-alive expiry the pooled
+# connection drops, and reconnecting to "localhost" tries IPv6 ::1 first (ollama listens on
+# IPv4 only) which stalls ~2s before falling back — adding ~2s to any call made >5s after the
+# previous one (i.e. every real demo turn). 127.0.0.1 skips that and keeps turns at ~0.7s.
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 LLM_MODEL = os.environ.get("LLM_MODEL", "qwen3:8b")
 TTS_ENGINE = os.environ.get("TTS_ENGINE", "piper").strip().lower() or "piper"
 PIPER_BINARY = os.environ.get("PIPER_BINARY", "piper").strip() or "piper"

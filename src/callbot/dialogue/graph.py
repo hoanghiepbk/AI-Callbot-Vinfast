@@ -167,9 +167,12 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
         # 3. No-progress turn (#7): category locked but nothing advanced — not a field,
         #    not a readback resolution, not even a (re)stated intent. Count it as a failed
         #    turn so repeated dead ends (empty NLU, nothing extracted) escalate to a human.
-        #    OOS/hangup turns are deliberate digressions, not failures.
+        #    OOS/hangup turns are deliberate digressions, not failures; a bare social greeting
+        #    is greeted back (handled in respond), never counted as stuck — same rule as
+        #    stuck_check, applied here too so a mid-call "alo/chào" can't escalate (#7).
         if not turn_failed and not progressed and state.nlu_category is None:
-            if not (state.signals.out_of_scope or state.signals.hangup):
+            digression = state.signals.out_of_scope or state.signals.hangup
+            if not digression and not _is_greeting(state.user_text):
                 turn_failed = True
 
         return {

@@ -66,7 +66,13 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
         final = pipeline.finalize()
         return final.model_dump(mode="json")
 
-    with gr.Blocks(title="VinFast Callbot") as demo:
+    def _reset():
+        # New call: wipe the shared conversation state so the next caller starts clean
+        # (the demo holds one pipeline; without this, slots/transcript bleed across calls).
+        pipeline.reset()
+        return None, "", "", "", {}, {}, None, {}
+
+    with gr.Blocks(title="VinFast Callbot", theme=gr.themes.Soft(primary_hue="blue")) as demo:
         gr.Markdown(
             "# 🚗 VinFast — Tổng đài viên ảo\n"
             "Trợ lý chăm sóc khách hàng tiếng Việt: **nghe → hiểu → trả lời bằng giọng nói**. "
@@ -85,6 +91,7 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                 with gr.Row():
                     submit = gr.Button("Gửi lượt", variant="primary")
                     finalize_btn = gr.Button("Kết thúc cuộc gọi", variant="secondary")
+                    reset_btn = gr.Button("🔄 Cuộc gọi mới", variant="secondary")
 
             with gr.Column(scale=1):
                 gr.Markdown("### 🤖 Tổng đài viên")
@@ -104,6 +111,10 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
             outputs=[reply, transcript, state, final, tts_audio, latency],
         )
         finalize_btn.click(_finalize, outputs=[final])
+        reset_btn.click(
+            _reset,
+            outputs=[audio, text, reply, transcript, state, final, tts_audio, latency],
+        )
 
     return GradioDemo(
         blocks=demo,

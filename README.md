@@ -239,6 +239,12 @@ python -m callbot.main --gradio --host 0.0.0.0 --port 7860   # LAN access
 Text mode needs only Ollama running. Voice mode additionally needs a microphone, ASR
 weights, and a TTS engine (`TTS_ENGINE=none` for text-only output).
 
+**On the demo machine, create `.env` from `.env.example` first** (`cp .env.example .env`):
+it pins `ASR_DEVICE=cuda` (GPU — without it ASR silently falls back to CPU at ~6s/turn),
+`TTS_ENGINE=piper` (100% local voice, no cloud), and `OLLAMA_KEEP_ALIVE=-1` (no reload spike
+between turns). The Gradio server also runs a one-time ASR+LLM+TTS warm-up at startup, so the
+first caller turn is warm (~3–4s) instead of a ~20–30s cold start.
+
 **Demo from another device** (e.g. run on a GPU PC, present from a laptop): launch on the PC
 with `--gradio --share`, then open the printed `*.gradio.live` link on the other device — the
 PC does all the ASR/LLM/TTS work, the laptop just needs a browser. The mic works because the
