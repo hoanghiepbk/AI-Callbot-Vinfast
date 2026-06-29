@@ -296,10 +296,11 @@ footer { display: none !important; }
 .vf-micbox .record-button svg, .vf-micbox .record-button svg * {
   fill: #fff !important; stroke: #fff !important;
 }
+/* Stop only restyles colour/border — no height override. The recorder lays its controls out in a
+   fixed-height container, so forcing a taller button made Stop overflow and get clipped in half. */
 .vf-micbox .stop-button, .vf-micbox .stop-button-paused, .vf-micbox button.stop-button {
   background: #fff !important; color: #E0344B !important; border: 2px solid #E0344B !important;
-  border-radius: 12px !important; min-height: 46px !important; height: auto !important;
-  padding: 0 22px !important; font-weight: 700 !important;
+  border-radius: 10px !important; padding: 0 18px !important; font-weight: 700 !important;
 }
 .vf-micbox .stop-button *, .vf-micbox .stop-button-paused * { background: transparent !important; }
 /* Hide the recorder's pause control: while recording it shows up as an orphaned, unstyled "II"
