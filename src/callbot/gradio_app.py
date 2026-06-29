@@ -72,6 +72,16 @@ _INTERCOM_INFO = (
     "rồi bấm <b>Gửi lượt</b>.</p></div>"
 )
 
+# The design is built for a light surface; force Gradio's light theme so a phone in dark mode does
+# not paint dark component backgrounds over the cards. Redirect once per session (guarded by a
+# sessionStorage flag so a stripped param can't loop) to the __theme=light URL Gradio honours.
+_FORCE_LIGHT = (
+    "<script>try{var p=new URLSearchParams(location.search);"
+    "if(p.get('__theme')!=='light'&&!sessionStorage.getItem('vf_light')){"
+    "sessionStorage.setItem('vf_light','1');p.set('__theme','light');"
+    "location.search=p.toString();}}catch(e){}</script>"
+)
+
 _WAVE_HEIGHTS = [
     10,
     16,
@@ -458,5 +468,6 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                 font=["Be Vietnam Pro", "system-ui", "sans-serif"],
             ),
             "css": _CSS,
+            "head": _FORCE_LIGHT,
         },
     )
