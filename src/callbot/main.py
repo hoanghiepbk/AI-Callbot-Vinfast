@@ -10,6 +10,7 @@ from callbot.audio.playback import play_wav_bytes
 from callbot.audio.stream import StreamingMicrophone
 from callbot.gradio_app import create_demo
 from callbot.pipeline import CallbotPipeline
+from callbot.utils.logging import setup_logging
 
 # Fixed opening line so a voice call starts like a real phone call (bot greets first).
 _VOICE_GREETING = "Dạ VinFast xin nghe, em có thể hỗ trợ gì cho mình ạ?"
@@ -167,6 +168,7 @@ def _warmup_pipeline(pipeline: CallbotPipeline) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    setup_logging()  # configure root logging once so per-turn latency lines surface
     parser = build_parser()
     args = parser.parse_args(argv)
 

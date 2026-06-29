@@ -127,6 +127,49 @@ def test_adaptive_endpoints_above_the_noise_floor():
     assert utterance.size >= 8 * _FRAME
 
 
+def _ambient(endpointer: VadEndpointer, n: int, rms: float = 0.03) -> None:
+    for _ in range(n):
+        endpointer.push_frame(np.full(endpointer.frame_size, rms, dtype=np.float32))
+
+
+def test_rearm_preserves_noise_calibration_but_resets_capture():
+    # The browser AGC mic calibrates an ambient-noise floor over a few frames. rearm() (used
+    # between turns) must KEEP that calibration so the floor does not re-converge each turn,
+    # while clearing the per-utterance capture state.
+    endpointer = VadEndpointer(adaptive=True)
+    _ambient(endpointer, 6)
+    assert endpointer._recent_rms  # calibration accumulated
+    floor_before = endpointer._speech_floor()
+
+    endpointer.rearm("phone")
+
+    assert endpointer.started is False  # capture state cleared
+    assert endpointer._recent_rms  # but the noise estimate is kept
+    assert endpointer._speech_floor() == floor_before  # same calibration carried forward
+
+
+def test_rearm_switches_silence_window_per_field():
+    endpointer = VadEndpointer(adaptive=True)
+    default_frames = endpointer.max_silent_frames
+
+    endpointer.rearm("phone")  # a read-back numeric field -> longer silence window
+    assert endpointer.max_silent_frames > default_frames
+
+    endpointer.rearm("full_name")  # ordinary field -> back to the default window
+    assert endpointer.max_silent_frames == default_frames
+
+
+def test_reset_clears_noise_calibration():
+    # A NEW call (reset) must forget the previous call's ambient estimate.
+    endpointer = VadEndpointer(adaptive=True)
+    _ambient(endpointer, 4)
+    assert endpointer._recent_rms
+
+    endpointer.reset()
+
+    assert not endpointer._recent_rms
+
+
 def test_readback_field_uses_longer_silence_window(monkeypatch):
     # 5 speech frames + a 900ms pause (30 frames). The default 700ms window would
     # endpoint here and cut the buffer short; the numeric read-back window (1200ms)

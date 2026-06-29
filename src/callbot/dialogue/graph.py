@@ -11,6 +11,7 @@ is ever dropped (BLUEPRINT §1A insurance).
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from langgraph.graph import END, START, StateGraph
@@ -46,18 +47,20 @@ _FILLED = {SlotStatus.CONFIRMED, SlotStatus.CORRECTED}
 # wrong value (D10): when the caller rejects it we must NOT confirm. Phrases are clear
 # rejections; bare standalone "không" counts too, but "không" embedded in a longer reply
 # (e.g. "không sao, đúng rồi") does NOT, to avoid false denials on affirmations.
+# Multi-word denial phrases are unambiguous as substrings. Single-word cues ("sai"/"nhầm")
+# are matched as WHOLE words only (below) so they cannot fire inside a longer token — e.g. a
+# joined place name "saigon" must not read as the denial "sai".
 _DENY_PHRASES = (
     "không đúng",
     "không phải",
     "không chính xác",
     "sai rồi",
-    "sai",
-    "nhầm",
     "chưa đúng",
     "đọc lại",
     "nhập lại",
     "đọc nhầm",
 )
+_DENY_WORDS = {"sai", "nhầm"}
 _DENY_EXACT = {"không", "không ạ", "không đâu", "ko", "hông", "hổng"}
 
 
@@ -70,17 +73,21 @@ def _is_denial(text: str) -> bool:
     low = text.strip().lower().rstrip(".!,? ")
     if low in _DENY_EXACT:
         return True
-    return any(phrase in low for phrase in _DENY_PHRASES)
+    if any(phrase in low for phrase in _DENY_PHRASES):
+        return True
+    return bool(_DENY_WORDS.intersection(re.findall(r"\w+", low)))
 
 
 # Social greeting / call-opener — handled deterministically so an opening "chào em / alo"
 # is greeted back, NOT treated as a no-progress (stuck) turn that escalates to a human (#7).
-_GREETINGS = ("chào", "alo", "a lô", "a lo", "xin chào", "hello")
+# Anchored to the START of the utterance (or the whole utterance) so a mid-sentence "chào"
+# inside a real request ("tôi muốn chào hỏi về đơn hàng") is not misread as a bare greeting.
+_GREETINGS = ("xin chào", "chào", "alo", "a lô", "a lo", "hello", "hi", "hey")
 
 
 def _is_greeting(text: str) -> bool:
-    low = text.strip().lower()
-    return low in {"hi", "hey"} or any(g in low for g in _GREETINGS)
+    low = text.strip().lower().rstrip(".!,? ")
+    return any(low == g or low.startswith(g + " ") for g in _GREETINGS)
 
 
 # Deterministic category backstop. When the LLM returns no category (qwen3 under-classifies —
@@ -415,8 +422,10 @@ def build_graph(llm: LLM, normalizer: Normalizer) -> Any:
             return {"reply": tmpl.closing_goodbye(ti), "done": True, "last_asked_field": None}
         if state.signals.out_of_scope:  # (#4) redirect at ANY point, keep collected state
             return out(tmpl.redirect(ti))
-        if state.offer_human:  # (#7) stuck
-            return out(tmpl.offer_human(ti))
+        if state.offer_human:  # (#7) stuck -> offer human, then END the call (transfer).
+            # done=True so the engine finalizes partial JSON instead of repeating the offer
+            # forever — a stuck call cannot make progress, so handing off is terminal.
+            return out(tmpl.offer_human(ti), done=True)
         if state.pending_field is not None:
             if state.pending_reason == "garbled":
                 return out(tmpl.garbled_repeat(state.pending_field, ti))

@@ -101,6 +101,20 @@ def test_gives_up_after_max_retries_without_raising(fake_chat):
     assert result.text == ""  # empty, but no exception — engine handles the floor
 
 
+def test_request_timeout_is_forwarded_to_client(monkeypatch):
+    # A per-request timeout must reach the underlying client so a hung server can't block a turn.
+    captured: dict = {}
+
+    def _capture(*args, **kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr("callbot.llm.ollama_client.ollama.Client", _capture)
+    OllamaClient(timeout=12.5)
+
+    assert captured["timeout"] == 12.5
+
+
 def test_transport_error_returns_empty(fake_chat, monkeypatch):
     def _boom(**kwargs):
         raise ConnectionError("ollama down")

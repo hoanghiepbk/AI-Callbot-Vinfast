@@ -327,9 +327,22 @@ def test_is_denial_keyword_detection():
 
     assert _is_denial("không đúng") is True
     assert _is_denial("sai rồi") is True
+    assert _is_denial("sai") is True  # bare denial word
     assert _is_denial("không") is True  # bare standalone denial
     assert _is_denial("đúng rồi") is False
     assert _is_denial("không sao, đúng rồi ạ") is False  # embedded 'không' != denial
+    assert _is_denial("saigon") is False  # 'sai' inside a longer token is not a denial
+
+
+def test_is_greeting_is_anchored():
+    from callbot.dialogue.graph import _is_greeting
+
+    assert _is_greeting("chào em") is True
+    assert _is_greeting("alo") is True
+    assert _is_greeting("xin chào ạ") is True
+    # A request that merely contains 'chào' mid-sentence must NOT be treated as a greeting.
+    assert _is_greeting("tôi muốn chào hỏi về đơn hàng") is False
+    assert _is_greeting("ừm") is False
 
 
 # --- R5: finalize() memoizes the post-call LLM call ---
@@ -401,6 +414,28 @@ def test_stuck_two_no_progress_turns_offers_human():
     r3 = engine.process("um")  # empty NLU again -> failed 2 -> escalate (#7)
     assert r3.state["offer_human"] is True
     assert "tổng đài viên" in r3.reply
+
+
+def test_stuck_escalation_ends_the_call_with_partial_json():
+    # (#7) After offering the human transfer the call must TERMINATE — not loop the offer
+    # forever — and finalize partial JSON (collected fields kept, missing -> null, like #8).
+    script = {
+        "intro": nlu_payload(category="G_3"),
+        "name": nlu_payload(extracted={"full_name": "Tran Van Hung"}),
+        "huh": nlu_payload(),
+        "um": nlu_payload(),
+    }
+    engine = _engine(script)
+    engine.process("intro")
+    engine.process("name")  # one real field collected
+    engine.process("huh")  # failed 1
+    r4 = engine.process("um")  # failed 2 -> escalate AND end
+
+    assert r4.state["offer_human"] is True
+    assert r4.done is True  # call ends on the hand-off (no infinite offer loop)
+    final = engine.finalize()
+    assert final.fields["full_name"] == "Tran Van Hung"  # partial JSON keeps what was collected
+    assert final.fields["order_phone"] is None  # never collected -> null
 
 
 def test_stuck_two_garbled_turns_offers_human():

@@ -36,6 +36,12 @@ _load_env_file(_ENV_PATH)
 # previous one (i.e. every real demo turn). 127.0.0.1 skips that and keeps turns at ~0.7s.
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 LLM_MODEL = os.environ.get("LLM_MODEL", "qwen3:8b")
+# Per-request timeout (seconds) for Ollama calls. Bounds a hung/unreachable server so a turn
+# fails gracefully (empty answer -> hybrid safety net) instead of blocking the call forever.
+try:
+    OLLAMA_TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "30"))
+except ValueError:
+    OLLAMA_TIMEOUT = 30.0
 TTS_ENGINE = os.environ.get("TTS_ENGINE", "piper").strip().lower() or "piper"
 PIPER_BINARY = os.environ.get("PIPER_BINARY", "piper").strip() or "piper"
 PIPER_VOICE = os.environ.get("PIPER_VOICE", "").strip()
