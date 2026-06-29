@@ -36,6 +36,21 @@ class _StubASR:
         return ASRResult(text="xin chao", confidence=0.9, latency_ms=12.0)
 
 
+class _StrictASR:
+    """Mirrors FasterWhisperASR's contract: rejects non-16k audio, records what it received."""
+
+    def __init__(self) -> None:
+        self.got_sr: int | None = None
+        self.got_dtype = None
+
+    def transcribe(self, audio, sample_rate: int = 16000) -> ASRResult:
+        if sample_rate != 16000:
+            raise ValueError("FasterWhisperASR expects 16 kHz mono audio")
+        self.got_sr = sample_rate
+        self.got_dtype = np.asarray(audio).dtype
+        return ASRResult(text="ok", confidence=0.9, latency_ms=1.0)
+
+
 class _StubTTS:
     def synthesize(self, text: str) -> TTSResult:
         samples = np.zeros(22050 // 10, dtype=np.float32)
@@ -105,6 +120,33 @@ def test_pipeline_audio_turn_uses_asr() -> None:
     assert turn.asr_latency_ms == 12.0
     assert turn.llm_latency_ms >= 0
     assert turn.reply_audio is not None
+
+
+def test_prepare_audio_for_asr_resamples_and_normalizes() -> None:
+    from callbot.pipeline import _prepare_audio_for_asr
+
+    sr = 48000
+    mic = (np.sin(np.linspace(0, 400, sr)) * 16000).astype(np.int16)  # 1s int16 @ 48 kHz
+
+    out = _prepare_audio_for_asr(mic, sr)
+
+    assert out.dtype == np.float32
+    assert out.ndim == 1
+    assert abs(len(out) - 16000) <= 4  # downsampled 48k -> ~16k samples
+    assert float(np.max(np.abs(out))) <= 1.0 + 1e-3  # int16 normalized into [-1, 1]
+
+
+def test_mic_48k_int16_path_does_not_crash() -> None:
+    # The reported demo bug: gradio hands a (48000, int16) tuple; ASR needs 16 kHz float32.
+    asr = _StrictASR()
+    pipeline = CallbotPipeline(engine=_engine(), asr=asr, tts=None)
+    mic = np.zeros(48000, dtype=np.int16)
+
+    turn = pipeline.turn(audio=(48000, mic), play_audio=False)  # gradio numpy-mic tuple
+
+    assert turn.user_text == "ok"
+    assert asr.got_sr == 16000  # pipeline resampled before ASR (no ValueError)
+    assert asr.got_dtype == np.float32
 
 
 def test_edge_tts_synth_is_silence_safe_without_deps() -> None:
