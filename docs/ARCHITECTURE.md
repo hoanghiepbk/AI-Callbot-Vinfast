@@ -29,15 +29,17 @@ machine*. Every claim below maps to a file in `src/callbot/`.
 
 | Stage | Implementation | Key file |
 |---|---|---|
-| Capture | `MicrophoneRecorder` (16 kHz mono float32) | `audio/recorder.py` |
-| VAD | `EnergyVAD` (Phase 1) / `SileroVAD` slot | `audio/vad.py` |
-| ASR | `FasterWhisperASR` (PhoWhisper CT2, lazy load) | `asr/faster_whisper_asr.py` |
+| Capture (fixed) | `MicrophoneRecorder` (16 kHz mono float32) | `audio/recorder.py` |
+| Capture (real-time) | `StreamingMicrophone` — continuous stream + VAD endpointing | `audio/stream.py` |
+| VAD | `EnergyVAD` (batch) / `VadEndpointer` (streaming) | `audio/vad.py`, `audio/stream.py` |
+| ASR | pluggable via `create_asr`: `FasterWhisperASR` (local PhoWhisper, default) \| `GroqASR` (cloud) | `asr/__init__.py`, `asr/faster_whisper_asr.py`, `asr/groq_asr.py` |
 | NLU | `nlu_node` → `NLUResult` (Ollama + Qwen3-8B) | `dialogue/extraction.py`, `llm/ollama_client.py` |
 | Dialogue | LangGraph `StateGraph`, 7 pure nodes | `dialogue/graph.py`, `dialogue/engine.py` |
 | Normalization | `VietnameseNormalizer.normalize_field` | `normalization/vietnamese_numbers.py` |
 | Response | template-first, 2–3 variants | `dialogue/response.py` |
 | Post-call | transcript → 1 LLM summary call | `dialogue/post_call.py` |
-| TTS | `PiperTTS` (local ONNX), pluggable | `tts/piper_tts.py`, `tts/__init__.py` |
+| TTS | pluggable via `create_tts`: `PiperTTS` (local, default) \| `EdgeTTS` (cloud neural) | `tts/__init__.py`, `tts/piper_tts.py`, `tts/edge_tts.py` |
+| Interfaces | CLI (`--text`/`--voice`) + 2-tab Gradio (real-time call + intercom) | `main.py`, `gradio_app.py`, `voice_call.py` |
 
 ---
 
@@ -121,6 +123,28 @@ Each maps to source; the full ledger is in
 12. **Eval-as-code, honest failure analysis** (DEC-22). *Choice:* golden scenarios + pluggable
     metric registry + ablation, run on the real engine. *Why:* prove the bot works and *why*. →
     `eval/` (see [eval_report.md](eval_report.md)).
+13. **Pluggable ASR/TTS — local default, cloud opt-in.** *Problem:* the local CPU stack is slow
+    on a laptop (PhoWhisper CPU decode, robotic Piper); but the submission must stay reproducible
+    and offline. *Choice:* both ASR and TTS are factories (`create_asr` / `create_tts`) selecting
+    by env. ASR: `faster_whisper` (local PhoWhisper, **default & canonical**) or `groq`
+    (cloud whisper-large-v3). TTS: `piper` (local, **default**) or `edge` (Microsoft neural).
+    Imports are lazy so picking one never requires the other's deps. *Why:* fast, natural
+    cloud options for live/laptop testing **without** weakening the 100%-local, reproducible
+    submission — the same swap pattern Edge already had for Piper. → `asr/__init__.py`,
+    `asr/groq_asr.py`, `tts/__init__.py`, `tts/edge_tts.py`.
+14. **Deterministic robustness backstops over a weak LLM** (defense-in-depth, extends DEC-13).
+    *Problem:* a small local LLM (Qwen3-8B) under-classifies clear intents (`category=null`) and
+    under-extracts answers (empty `extracted_fields`), which would stall the call and escalate to
+    a human (#7) on perfectly valid input. *Choice:* keyword/heuristic backstops in `route` and
+    `slot_update`, each firing **only when the LLM produced nothing** (never overriding a
+    confident model): **(a) category backstop** — rescue/warranty/order/tech keyword cues route
+    to the right category (car-vs-motorbike disambiguation for warranty); **(b) answer-binding** —
+    when the bot asked for a field and the caller's reply is a direct answer (not a
+    denial/correction/topic-change/stall), bind the de-prefixed utterance to that field. Guards
+    exclude hesitation/non-answers ("ừm để xem") so the stuck escalation still works. *Why:* the
+    bot must survive a weak extractor; identical to the hybrid emergency rule. Eval routing 100% /
+    slot-F1 1.000 preserved. → `dialogue/graph.py` (`_keyword_category`, answer-binding in
+    `slot_update`, `_is_non_answer`).
 
 Other locked decisions: PhoWhisper-CT2 ASR (D1/DEC-03), Ollama+Qwen3-8B (DEC-04),
 sounddevice+numpy (DEC-06), silero/energy VAD (D? /DEC-07), Pydantic v2 structured output
@@ -180,3 +204,43 @@ Metrics are pluggable functions over golden scenarios run through the **real** e
 recall/precision (keyword vs calm), latency p50/p95, LLM-as-judge naturalness, and WER/CER on
 real audio. An ablation study quantifies each design decision's contribution. Numbers,
 methodology, and honest failure analysis: **[eval_report.md](eval_report.md)**.
+
+---
+
+## 7. Real-time voice loop & interfaces
+
+The engine is text-in/text-out; everything in this section is Track B's *senses & voice* layer
+wrapping it. Two capture modes share one `VadEndpointer` so endpointing is identical in both.
+
+**Turn-taking — half-duplex, VAD-endpointed.** Instead of a fixed N-second record window, the
+caller speaks naturally and a turn ends on a trailing pause:
+
+- **`VadEndpointer`** ([audio/stream.py](../src/callbot/audio/stream.py)) — a frame-by-frame
+  energy-VAD state machine. A candidate onset must reach `min_speech_frames` *consecutive* speech
+  frames to arm (so a click never triggers a capture); a `_PREROLL_MS` ring buffer is prepended
+  so a soft word-initial consonant isn't clipped; the turn ends after a trailing silence window
+  (longer for read-back numeric fields, so a mid-number pause doesn't cut the caller off). An
+  `adaptive` mode calibrates the speech threshold to the ambient noise floor — needed for a
+  browser mic with AGC, whose floor can sit above a fixed threshold.
+- **`StreamingMicrophone`** (CLI) pulls frames off a `sounddevice` input stream; **`MIC_GAIN`**
+  boosts quiet laptop mics so speech clears the VAD threshold.
+- **`VoiceCallSession`** ([voice_call.py](../src/callbot/voice_call.py)) is the UI-agnostic
+  browser equivalent: streamed mic chunks are fed in, endpointed, and answered. **Half-duplex** —
+  while the bot's audio plays, the mic is muted (`_muted_until`) so the bot never transcribes
+  itself. A wall-clock cap forces a turn if the VAD never sees a pause (dead mic / constant
+  noise), so the loop can't hang.
+
+**Interfaces:**
+
+- **CLI** ([main.py](../src/callbot/main.py)) — `--text` (keyboard, no audio), `--voice`
+  (real-time `StreamingMicrophone` loop, bot greets first), `--gradio`.
+- **Gradio** ([gradio_app.py](../src/callbot/gradio_app.py)) — two tabs over the same pipeline:
+  **📞 Gọi điện** (hands-free streaming call via `VoiceCallSession`) and **🎙️ Bộ đàm**
+  (click-to-send: record/​type → "Gửi lượt"). Live transcript, slot state, final JSON and a
+  per-stage latency panel. Handlers are wrapped so a transient cloud-ASR/LLM error shows an
+  inline apology instead of crashing the call; stopping the call recording finalizes and shows
+  the `FinalOutput` JSON.
+
+**Empty-ASR short-circuit.** When ASR returns no text (silence/noise filtered out),
+`pipeline.turn` skips the engine entirely — so background noise can't fabricate a turn or trip
+the stuck escalation.
