@@ -153,6 +153,9 @@ footer { display: none !important; }
 .vf-card.teal { background: #FCFDFF !important; }
 /* header strip: a gr.HTML (elem_classes vf-head) pulled to the card edges with negative margins */
 .vf-head { margin: -18px -20px 12px !important; padding: 0 !important; background: transparent !important; border: none !important; }
+/* gr.HTML wraps content in .html-container with default block padding; zero it so the head strip
+   reaches the card edges instead of leaving a misaligned notch around the icon/title/status. */
+.vf-head .html-container, .vf-head .prose { padding: 0 !important; margin: 0 !important; }
 .vf-card-head {
   display: flex; align-items: center; gap: 11px; padding: 15px 18px;
   border-bottom: 1px solid #EEF1F7; background: linear-gradient(180deg, #F6FAFF, #FFFFFF);
@@ -281,17 +284,24 @@ footer { display: none !important; }
    contrast, so on a phone callers couldn't tell where to tap). ---- */
 .vf-micbox .controls { gap: 10px !important; row-gap: 10px !important; }
 .vf-micbox .record-button, .vf-micbox button.record-button {
-  background: linear-gradient(135deg, #E0344B, #C81E38) !important; color: #fff !important;
-  border: none !important; border-radius: 12px !important;
-  min-height: 48px !important; height: auto !important; padding: 0 22px !important;
-  font-weight: 700 !important; gap: 9px !important;
-  box-shadow: 0 10px 22px -12px rgba(224, 52, 75, .65) !important;
+  background: #E0344B !important; color: #fff !important; border: none !important;
+  border-radius: 12px !important; min-height: 46px !important; height: auto !important;
+  width: auto !important; flex: 0 0 auto !important; padding: 0 26px !important;
+  font-weight: 700 !important; justify-content: center !important; gap: 8px !important;
+  box-shadow: 0 8px 18px -10px rgba(224, 52, 75, .55) !important;
 }
-.vf-micbox .stop-button, .vf-micbox button.stop-button {
+/* Kill any inner element's light background (it made the button look half-coloured) and keep the
+   record glyph white on the solid red fill. */
+.vf-micbox .record-button * { background: transparent !important; color: #fff !important; }
+.vf-micbox .record-button svg, .vf-micbox .record-button svg * {
+  fill: #fff !important; stroke: #fff !important;
+}
+.vf-micbox .stop-button, .vf-micbox .stop-button-paused, .vf-micbox button.stop-button {
   background: #fff !important; color: #E0344B !important; border: 2px solid #E0344B !important;
-  border-radius: 12px !important; min-height: 48px !important; height: auto !important;
-  padding: 0 20px !important; font-weight: 700 !important;
+  border-radius: 12px !important; min-height: 46px !important; height: auto !important;
+  padding: 0 22px !important; font-weight: 700 !important;
 }
+.vf-micbox .stop-button *, .vf-micbox .stop-button-paused * { background: transparent !important; }
 
 /* ---- Tablet / small laptop: stack the two cards and declutter the header ---- */
 @media (max-width: 860px) {
