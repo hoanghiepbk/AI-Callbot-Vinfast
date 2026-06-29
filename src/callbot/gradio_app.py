@@ -268,7 +268,10 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
             return GradioDemo(blocks=None, available=False)
 
     # Full bot+caller conversation, accumulated for the chat-bubble history (the engine's own
-    # transcript stores caller turns only). Shared across both tabs = one ongoing call.
+    # transcript stores caller turns only). Shared across both tabs = ONE ongoing call: this is a
+    # single-call demo by design, not a multi-tenant service. The pipeline + this history are
+    # global, so concurrent callers would interleave; the queue() serialization at the end of
+    # create_demo (concurrency_limit=1) keeps a turn from being corrupted mid-flight.
     history: list[tuple[str, str]] = []
 
     def _turn(audio, text):
@@ -514,6 +517,11 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
                         _reset,
                         outputs=[audio, text, reply, transcript, state, final, tts_audio, latency],
                     )
+
+    # Single-call demo: the pipeline + conversation state are shared, so process one request at a
+    # time. This serializes concurrent callers (a turn can't be corrupted mid-flight by another
+    # request) — the honest bound for a non-multi-tenant demo, per the brief (not production-ready).
+    demo.queue(default_concurrency_limit=1)
 
     return GradioDemo(
         blocks=demo,
