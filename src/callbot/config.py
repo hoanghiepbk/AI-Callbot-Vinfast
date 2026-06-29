@@ -55,3 +55,11 @@ except ValueError:
 # Voice-mode backchannel: play a fixed "dạ vâng ạ" filler the instant audio arrives, masking
 # ASR+LLM latency so the caller perceives an instant reply. Opt-in (off by default).
 VOICE_FILLER = os.environ.get("VOICE_FILLER", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+# Mic input gain for the real-time voice loop. Quiet built-in laptop mics can sit below the
+# VAD speech threshold, so the bot never detects a turn; boosting the signal in software fixes
+# detection AND gives ASR a healthier level. 1.0 = no change. Raise (e.g. 8–12) for quiet mics.
+try:
+    MIC_GAIN = float(os.environ.get("MIC_GAIN", "1.0"))
+except ValueError:
+    MIC_GAIN = 1.0

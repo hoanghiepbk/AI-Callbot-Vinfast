@@ -233,6 +233,18 @@ class CallbotPipeline:
             asr_result = self.asr.transcribe(audio_16k, sample_rate=16000)
             user_text = asr_result.text
             asr_latency_ms = asr_result.latency_ms
+            if not (user_text or "").strip():
+                # ASR filtered out non-speech (silence/background noise) — skip the engine
+                # entirely so a stray noise turn cannot trip the stuck-escalation. The caller
+                # (voice loop) sees empty user_text and simply keeps listening.
+                return PipelineTurnResult(
+                    user_text="",
+                    reply="",
+                    done=False,
+                    state={},
+                    asr_latency_ms=asr_latency_ms,
+                    total_latency_ms=(time.perf_counter() - started) * 1000.0,
+                )
 
         process_started = time.perf_counter()
         turn_result: TurnResult = self.engine.process(user_text or "")

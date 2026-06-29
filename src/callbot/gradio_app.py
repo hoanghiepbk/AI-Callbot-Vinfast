@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from callbot.audio.playback import decode_wav_bytes
@@ -13,11 +13,12 @@ from callbot.pipeline import CallbotPipeline
 class GradioDemo:
     blocks: Any | None
     available: bool
+    launch_kwargs: dict = field(default_factory=dict)
 
     def launch(self, **kwargs: Any) -> Any:
         if not self.available or self.blocks is None:
             raise RuntimeError("gradio is not installed")
-        return self.blocks.launch(**kwargs)
+        return self.blocks.launch(**{**self.launch_kwargs, **kwargs})
 
 
 def _audio_for_gradio(audio: bytes | None, sample_rate: int | None) -> tuple[int, Any] | None:
@@ -115,4 +116,8 @@ def create_demo(pipeline: CallbotPipeline | None = None) -> GradioDemo:
             outputs=[audio, text, reply, transcript, state, final, tts_audio, latency],
         )
 
-    return GradioDemo(blocks=demo, available=True)
+    return GradioDemo(
+        blocks=demo,
+        available=True,
+        launch_kwargs={"theme": gr.themes.Soft(primary_hue="blue")},
+    )
