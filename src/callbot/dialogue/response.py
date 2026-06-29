@@ -54,7 +54,21 @@ def readback(field: str, value: str, turn_index: int) -> str:
     return shell.format(label=_label(field), value=value)
 
 
+# Format hints for the parse-fail (#5) re-ask: a wrong-length phone or malformed plate/VIN is a
+# FORMAT problem, not a "didn't hear" problem — telling the caller what's expected lets them
+# self-correct instead of repeating the same invalid value until the call escalates.
+_GARBLED_HINTS = {
+    "phone": "số điện thoại gồm đúng 10 chữ số",
+    "owner_phone": "số điện thoại chủ xe gồm đúng 10 chữ số",
+    "order_phone": "số điện thoại đặt hàng gồm đúng 10 chữ số",
+    "license_plate_vin": "biển số (vd 30A-12345) hoặc số VIN gồm 17 ký tự",
+}
+
+
 def garbled_repeat(field: str, turn_index: int) -> str:
+    hint = _GARBLED_HINTS.get(field)
+    if hint:
+        return f"Dạ em cần {hint}; anh/chị đọc lại {_label(field)} giúp em ạ."
     return f"Em chưa nghe rõ {_label(field)}, anh/chị nhắc lại giúp em được không ạ?"
 
 
